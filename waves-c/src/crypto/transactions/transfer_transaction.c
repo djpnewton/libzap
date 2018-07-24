@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <utils.h>
-#include <printf.h>
 #include <libbase58.h>
 #include <waves_crypto.h>
 
