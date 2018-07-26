@@ -7,8 +7,8 @@ MAKE=make
 CMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake
 ANDROID_ABI=armeabi-v7a
 ANDROID_API=18
-DEPS=../
-OPENSSL_ROOT_DIR=../deps/openssl/$ANDROID_ABI
+DEPS=../deps
+OPENSSL_ROOT_DIR=$DEPS/openssl/$ANDROID_ABI
 
 if [ ! -d $OPENSSL_ROOT_DIR ]; then
     # from https://www.teskalabs.com/blog/openssl-binary-distribution-for-developers-static-library
