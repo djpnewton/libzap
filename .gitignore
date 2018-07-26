@@ -16,4 +16,5 @@ generated-src/
 test/build
 deps/openssl
 src/ndk_build
+src/build
 src/openssl-dev-1.0.2o-android.tar.gz
