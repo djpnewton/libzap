@@ -1,3 +1,4 @@
+#include <curl/curl.h>
 #include "../waves-c/src/crypto/waves_crypto.h"
 
 int lzap_version()
@@ -8,4 +9,24 @@ int lzap_version()
 void lzap_seed_to_address(const unsigned char *key, unsigned char network_byte, unsigned char *output)
 {
     waves_seed_to_address(key, network_byte, output);
+}
+
+bool lzap_test_curl()
+{
+    CURL *curl = curl_easy_init();
+    if (curl)
+    {
+        CURLcode res;
+        curl_easy_setopt(curl, CURLOPT_URL, "http://example.com");
+        res = curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
+        if (res == CURLE_OK)
+            return true;
+    }
+    return false;
+}
+
+bool lzap_test_jansson()
+{
+    return false;
 }
