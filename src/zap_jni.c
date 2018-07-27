@@ -16,3 +16,13 @@ JNIEXPORT jstring JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_seed_1to_1address
     lzap_seed_to_address(c_key, network_byte, output);
     return (*env)->NewStringUTF(env, output);
 }
+
+JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_test_1curl(JNIEnv* env, jobject thiz)
+{
+    return lzap_test_curl();
+}
+
+JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_test_1jansson(JNIEnv* env, jobject thiz)
+{
+    return lzap_test_jansson();
+}
