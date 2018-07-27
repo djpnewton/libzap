@@ -1,4 +1,6 @@
+#include <string.h>
 #include <curl/curl.h>
+#include <jansson.h>
 #include "../waves-c/src/crypto/waves_crypto.h"
 
 int lzap_version()
@@ -28,5 +30,19 @@ bool lzap_test_curl()
 
 bool lzap_test_jansson()
 {
-    return false;
+    bool result = false;
+    json_t *root;
+    json_error_t error;
+    root = json_loads("{\"test\": 123}", 0, &error);
+    if (!root)
+        return result;
+    if (!json_is_object(root))
+        goto cleanup;
+    json_t* test = json_object_get(root, "test");
+    if (!json_is_integer(test))
+        goto cleanup;
+    result = json_integer_value(test) == 123;
+cleanup:
+    json_decref(root);
+    return result;
 }

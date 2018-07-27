@@ -17,7 +17,9 @@ generated-src/
 test/build
 deps/openssl
 deps/curl-android-ios-*
+deps/jansson-*
 src/ndk_build
 src/build
 src/openssl-dev-1.0.2o-android.tar.gz
 src/libcurl-android-ios.zip
+jansson_v2.11.zip

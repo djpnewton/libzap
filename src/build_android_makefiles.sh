@@ -10,6 +10,7 @@ ANDROID_API=18
 DEPS=../deps
 OPENSSL_ROOT_DIR=$DEPS/openssl/$ANDROID_ABI
 LIBCURL_ROOT_DIR=$DEPS/curl-android-ios-2aead71c1921d87cf7330d2acd581b1307adb1e1/prebuilt-with-ssl/android
+JANSSON_ROOT_DIR=$DEPS/jansson-2.11
 
 if [ ! -d $OPENSSL_ROOT_DIR ]; then
     # from https://www.teskalabs.com/blog/openssl-binary-distribution-for-developers-static-library
@@ -23,6 +24,12 @@ if [ ! -d $LIBCURL_ROOT_DIR ]; then
     wget -nc https://github.com/gcesarmza/curl-android-ios/archive/2aead71c1921d87cf7330d2acd581b1307adb1e1.zip -O libcurl-android-ios.zip
     mkdir -p $DEPS
     unzip libcurl-android-ios.zip -d $DEPS
+fi
+
+if [ ! -d $JANSSON_ROOT_DIR ]; then
+    wget -nc https://github.com/akheron/jansson/archive/v2.11.zip -O ../jansson_v2.11.zip
+    mkdir -p $DEPS
+    unzip ../jansson_v2.11.zip -d $DEPS
 fi
 
 cmake "-GUnix Makefiles" \
