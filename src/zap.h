@@ -5,7 +5,11 @@
 extern "C" {
 #endif
     int lzap_version();
-    void lzap_seed_to_address(const unsigned char *key, unsigned char network_byte, unsigned char *output);
+    void lzap_set_network(unsigned char network_byte);
+    void lzap_seed_to_address(const unsigned char *key, unsigned char *output);
+    int lzap_address_balance(const unsigned char *address);
+    int lzap_test_curl();
+    int lzap_test_jansson();
 #ifdef __cplusplus
 }
 #endif
