@@ -9,6 +9,9 @@
 #define TESTNET_HOST "https://testnode1.wavesnodes.com"
 #define MAINNET_HOST "https://nodes.wavesnodes.com"
 
+#define TESTNET_ASSETID "35twb3NRL7cZwD1JjPHGzFLQ1P4gtUutTuFEXAg1f1hG"
+#define MAINNET_ASSETID "nada"
+
 #define MAX_CURL_DATA (1024*20)
 struct curl_data_t
 {
@@ -20,7 +23,7 @@ unsigned char g_network = 'T';
 
 #define DEBUG 1
 #define debug_print(fmt, ...) \
-            do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
+            do { if (DEBUG) fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
 
 void check_network()
 {
@@ -32,6 +35,13 @@ const char* network_host()
     if (g_network == 'M')
         return MAINNET_HOST;
     return TESTNET_HOST;
+}
+
+const char* network_assetid()
+{
+    if (g_network == 'M')
+        return MAINNET_ASSETID;
+    return TESTNET_ASSETID;
 }
 
 static size_t write_data(void *ptr, size_t size, size_t nmemb, void *userdata)
@@ -86,6 +96,11 @@ bool get_waves_endpoint(const char *endpoint, struct curl_data_t *data)
     return get_url(url, data);
 }
 
+void print_json_error(const char *function, json_error_t *error)
+{
+    debug_print("%s: %s - source: %s\n", function, error->text, error->source);
+}
+
 void lzap_set_network(unsigned char network_byte)
 {
     g_network = network_byte;
@@ -102,13 +117,44 @@ void lzap_seed_to_address(const unsigned char *key, unsigned char *output)
     waves_seed_to_address(key, g_network, output);
 }
 
-int lzap_address_balance(const unsigned char *address)
+bool lzap_address_balance(const unsigned char *address, int *balance)
 {
     check_network();
+    *balance = 0;
+
+#define MAX_URL 1024
+    char endpoint[MAX_URL];
+    int res = snprintf(endpoint, MAX_URL, "/assets/balance/%s/%s", address, network_assetid());
+    if (res < 0 || res >= MAX_URL)
+        return false;
     struct curl_data_t data;
-    if (get_waves_endpoint("/assets/balance/{address}", &data))
+    if (get_waves_endpoint(endpoint, &data))
     {
-        //TODO
+        bool result = false;
+        json_t *root;
+        json_error_t error;
+        root = json_loads(data.ptr, 0, &error);
+        if (!root)
+        {
+            print_json_error("lzap_address_balance", &error);
+            return result;
+        }
+        if (!json_is_object(root))
+        {
+            debug_print("lzap_address_balance: json root is not an object\n");
+            goto cleanup;
+        }
+        json_t* balance_field = json_object_get(root, "balance");
+        if (!json_is_integer(balance_field))
+        {
+            debug_print("lzap_address_balance: balance field is not an integer\n");
+            goto cleanup;
+        }
+        *balance = json_integer_value(balance_field);
+        result = true;
+cleanup:
+        json_decref(root);
+        return result;
     }
     return false;
 }
@@ -119,8 +165,8 @@ bool lzap_test_curl()
     bool res = get_url("http://example.com", &data);
     if (res)
     {
-        printf("got url:\n");
-        printf("%s\n", data.ptr);
+        //printf("got url:\n");
+        //printf("%s\n", data.ptr);
     }
     return res;
 }

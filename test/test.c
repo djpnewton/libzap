@@ -1,4 +1,5 @@
-#include "stdio.h"
+#include <stdio.h>
+#include <stdbool.h>
 
 #include "../src/zap.h"
 
@@ -10,6 +11,9 @@ int main()
     printf("libzap version %d\n", lzap_version());
     lzap_seed_to_address(seed, address);
     printf("%s - %s\n", seed, address);
+    int balance;
+    bool res = lzap_address_balance(address, &balance);
+    printf("address balance retrieved: %d\naddress balance: %d\n", res, balance);
     printf("test curl: %d\n", lzap_test_curl());
     printf("test jansson: %d\n", lzap_test_jansson());
 }
