@@ -8,14 +8,34 @@ JNIEXPORT jint JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_version(JNIEnv* env,
     return lzap_version();
 }
 
+JNIEXPORT void JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_set_1network(
+    JNIEnv* env, jobject thiz, jchar network_byte)
+{
+    lzap_set_network(network_byte);
+}
+
 JNIEXPORT jstring JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_seed_1to_1address(
-    JNIEnv* env, jobject thiz, jstring key, jchar network_byte)
+    JNIEnv* env, jobject thiz, jstring key)
 {
     char* c_key = strdup((*env)->GetStringUTFChars(env, key, 0));
     char output[1024];
-    lzap_seed_to_address(c_key, network_byte, output);
+    lzap_seed_to_address(c_key, output);
     return (*env)->NewStringUTF(env, output);
 }
+
+JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1balance(
+    JNIEnv* env, jobject thiz, jstring address)
+{
+    // get result
+    char* c_address = strdup((*env)->GetStringUTFChars(env, address, 0));
+    struct int_result_t balance = lzap_address_balance(c_address);
+    // create java class to return result
+    jclass cls = (*env)->FindClass(env, "com/djpsoft/zap/plugin/IntResult");
+    jmethodID constructor = (*env)->GetMethodID(env, cls, "<init>", "(ZI)V");
+    jobject instance = (*env)->NewObject(env, cls, constructor, balance.success, balance.value);
+    return instance;
+}
+
 
 JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_test_1curl(JNIEnv* env, jobject thiz)
 {

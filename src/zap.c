@@ -5,6 +5,7 @@
 #include <jansson.h>
 
 #include "../waves-c/src/crypto/waves_crypto.h"
+#include "zap.h"
 
 #define TESTNET_HOST "https://testnode1.wavesnodes.com"
 #define MAINNET_HOST "https://nodes.wavesnodes.com"
@@ -101,14 +102,14 @@ void print_json_error(const char *function, json_error_t *error)
     debug_print("%s: %s - source: %s\n", function, error->text, error->source);
 }
 
-void lzap_set_network(unsigned char network_byte)
-{
-    g_network = network_byte;
-}
-
 int lzap_version()
 {
     return 1;
+}
+
+void lzap_set_network(unsigned char network_byte)
+{
+    g_network = network_byte;
 }
 
 void lzap_seed_to_address(const unsigned char *key, unsigned char *output)
@@ -117,27 +118,27 @@ void lzap_seed_to_address(const unsigned char *key, unsigned char *output)
     waves_seed_to_address(key, g_network, output);
 }
 
-bool lzap_address_balance(const unsigned char *address, int *balance)
+struct int_result_t lzap_address_balance(const unsigned char *address)
 {
     check_network();
-    *balance = 0;
+
+    struct int_result_t balance = { false, 0 };
 
 #define MAX_URL 1024
     char endpoint[MAX_URL];
     int res = snprintf(endpoint, MAX_URL, "/assets/balance/%s/%s", address, network_assetid());
     if (res < 0 || res >= MAX_URL)
-        return false;
+        return balance;
     struct curl_data_t data;
     if (get_waves_endpoint(endpoint, &data))
     {
-        bool result = false;
         json_t *root;
         json_error_t error;
         root = json_loads(data.ptr, 0, &error);
         if (!root)
         {
             print_json_error("lzap_address_balance", &error);
-            return result;
+            return balance;
         }
         if (!json_is_object(root))
         {
@@ -150,13 +151,13 @@ bool lzap_address_balance(const unsigned char *address, int *balance)
             debug_print("lzap_address_balance: balance field is not an integer\n");
             goto cleanup;
         }
-        *balance = json_integer_value(balance_field);
-        result = true;
+        balance.value = json_integer_value(balance_field);
+        balance.success = true;
 cleanup:
         json_decref(root);
-        return result;
+        return balance;
     }
-    return false;
+    return balance;
 }
 
 bool lzap_test_curl()

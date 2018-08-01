@@ -11,9 +11,8 @@ int main()
     printf("libzap version %d\n", lzap_version());
     lzap_seed_to_address(seed, address);
     printf("%s - %s\n", seed, address);
-    int balance;
-    bool res = lzap_address_balance(address, &balance);
-    printf("address balance retrieved: %d\naddress balance: %d\n", res, balance);
+    struct int_result_t balance = lzap_address_balance(address);
+    printf("address balance success: %d\naddress balance value: %d\n", balance.success, balance.value);
     printf("test curl: %d\n", lzap_test_curl());
     printf("test jansson: %d\n", lzap_test_jansson());
 }
