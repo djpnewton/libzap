@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
 #include <curl/curl.h>
 #include <jansson.h>
@@ -13,6 +15,8 @@
 #define TESTNET_ASSETID "35twb3NRL7cZwD1JjPHGzFLQ1P4gtUutTuFEXAg1f1hG"
 #define MAINNET_ASSETID "nada"
 
+#define MAX_FILENAME 1024
+
 #define MAX_CURL_DATA (1024*20)
 struct curl_data_t
 {
@@ -23,8 +27,14 @@ struct curl_data_t
 unsigned char g_network = 'T';
 
 #define DEBUG 1
-#define debug_print(fmt, ...) \
-            do { if (DEBUG) fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
+#ifdef __ANDROID__
+    #include <android/log.h>
+    #define debug_print(fmt, ...) \
+        do { if (DEBUG) __android_log_print(ANDROID_LOG_ERROR, "LIBZAP", fmt, ##__VA_ARGS__); } while (0)
+#else
+    #define debug_print(fmt, ...) \
+        do { if (DEBUG) fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
+#endif
 
 void check_network()
 {
@@ -45,6 +55,57 @@ const char* network_assetid()
     return TESTNET_ASSETID;
 }
 
+#ifdef __ANDROID__
+bool curl_cacert_pem_filename(char filename[MAX_FILENAME])
+{
+    char cmdline[MAX_FILENAME];
+    memset(cmdline, 0, MAX_FILENAME);
+    memset(filename, 0, MAX_FILENAME);
+    FILE *f = fopen("/proc/self/cmdline", "r");
+    if (f == NULL)
+        return false;
+    size_t result = fread(cmdline, 1, MAX_FILENAME, f);
+    fclose(f);
+    if (result > 0)
+    {
+        debug_print("command line: %s\n", cmdline);
+        int res = snprintf(filename, MAX_FILENAME, "/data/data/%s/cacert.pem", cmdline);
+        if (res < 0 || res >= MAX_FILENAME)
+            return false;
+        debug_print("cacert_pem_filename: %s\n", filename);
+        return true;
+    }
+    return false;
+}
+
+bool cacert_pem_file_write()
+{
+#include "resources.c"
+    // get the filename
+    char filename[MAX_FILENAME];
+    if (!curl_cacert_pem_filename(filename))
+    {
+        debug_print("unable to find cacert pem filename!");
+        return false;
+    }
+    // create it if it does not exist
+    if (access(filename, F_OK) == -1)
+    {
+        FILE *f = fopen(filename, "w");
+        if (f == NULL)
+            return false;
+        size_t result = fwrite(cacert_pem, 1, sizeof(cacert_pem), f);
+        fclose(f);
+        if (result != sizeof(cacert_pem))
+        {
+            debug_print("failed to write %s (%d of %d bytes)", filename, result, sizeof(cacert_pem));
+            return false;
+        }
+    }
+    return true;
+}
+#endif
+
 static size_t write_data(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
     struct curl_data_t* data = (struct curl_data_t*)userdata;
@@ -61,6 +122,13 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *userdata)
 
 bool get_url(const char *url, struct curl_data_t *data)
 {
+#ifdef __ANDROID__
+    if (!cacert_pem_file_write())
+    {
+        debug_print("failed to write/check the cacert pem file\n");
+        return false;
+    }
+#endif
     // reset data struct
     data->len = 0;
     memset(data->ptr, 0, MAX_CURL_DATA);
@@ -72,6 +140,11 @@ bool get_url(const char *url, struct curl_data_t *data)
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
+#ifdef __ANDROID__
+        char filename[MAX_FILENAME];
+        if (curl_cacert_pem_filename(filename))
+            curl_easy_setopt(curl, CURLOPT_CAINFO, filename);
+#endif
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
         if (res == CURLE_OK)
@@ -80,9 +153,9 @@ bool get_url(const char *url, struct curl_data_t *data)
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
             if (response_code == 200)
                 return true;
-            debug_print("get_url: response_code (%ld)\n", response_code);
+            debug_print("get_url: response_code (%ld, %s)\n", response_code, url);
         }
-        debug_print("get_url: curl code (%u)\n", res);
+        debug_print("get_url: curl code (%u, %s)\n", res, url);
     }
     return false;
 }
