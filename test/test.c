@@ -15,7 +15,9 @@ int main()
     printf("address balance success: %d\naddress balance value: %d\n", balance.success, balance.value);
     char mnemonic[1024];
     bool res = lzap_mnemonic_create(mnemonic, 1024);
-    printf("mnemonic create: %d\nmnemonic: %s\n:", res, mnemonic);
+    printf("mnemonic create: %d\nmnemonic: %s\n", res, mnemonic);
+    printf("mnemonic check: %d\n", lzap_mnemonic_check(mnemonic));
+    printf("mnemonic check bad: %d\n", !lzap_mnemonic_check("blah one two"));
     printf("test curl: %d\n", lzap_test_curl());
     printf("test jansson: %d\n", lzap_test_jansson());
 }

@@ -45,6 +45,13 @@ JNIEXPORT void JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1create(
     return (*env)->NewStringUTF(env, NULL);
 }
 
+JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1check(
+    JNIEnv* env, jobject thiz, jstring mnemonic)
+{
+    char* c_mnemonic = strdup((*env)->GetStringUTFChars(env, mnemonic, 0));
+    return lzap_mnemonic_check(c_mnemonic);
+}
+
 
 JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_test_1curl(JNIEnv* env, jobject thiz)
 {

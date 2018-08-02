@@ -252,6 +252,11 @@ bool lzap_mnemonic_create(char *output, size_t size)
     return true;
 }
 
+bool lzap_mnemonic_check(char *mnemonic)
+{
+    return mnemonic_check(mnemonic);
+}
+
 bool lzap_test_curl()
 {
     struct curl_data_t data;

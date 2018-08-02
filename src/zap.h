@@ -19,6 +19,7 @@ extern "C" {
     void lzap_seed_to_address(const unsigned char *key, unsigned char *output);
     struct int_result_t lzap_address_balance(const unsigned char *address);
     bool lzap_mnemonic_create(char *output, size_t size);
+    bool lzap_mnemonic_check(char *mnemonic);
 
 
     bool lzap_test_curl();
