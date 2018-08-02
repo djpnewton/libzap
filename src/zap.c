@@ -113,7 +113,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *userdata)
     int remaining = MAX_CURL_DATA - data->len;
     if (remaining < nmemb)
     {
-        debug_print("write_data: remaining (%d) <  nmemb (%lu)\n", remaining, nmemb);
+        debug_print("write_data: remaining (%d) <  nmemb (%zu)\n", remaining, nmemb);
         return 0;
     }
     memcpy(data->ptr + data->len, ptr, nmemb);
@@ -238,11 +238,14 @@ bool lzap_mnemonic_create(char *output, size_t size)
 {
     const char *mnemonic = mnemonic_generate(128);
     if (mnemonic == NULL)
+    {
+        debug_print("mnemonic_generate failed\n");
         return false;
+    }
     size_t len = strlen(mnemonic);
     if (len > size)
     {
-        debug_print("output string not large enough (%lu bytes required)\n", len);
+        debug_print("output string not large enough (%zu bytes required)\n", len);
         return false;
     }
     strncpy(output, mnemonic, size); 

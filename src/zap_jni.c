@@ -36,6 +36,15 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1balance(
     return instance;
 }
 
+JNIEXPORT void JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1create(
+    JNIEnv* env, jobject thiz)
+{
+    char output[1024];
+    if (lzap_mnemonic_create(output, sizeof(output)))
+        return (*env)->NewStringUTF(env, output);
+    return (*env)->NewStringUTF(env, NULL);
+}
+
 
 JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_test_1curl(JNIEnv* env, jobject thiz)
 {
