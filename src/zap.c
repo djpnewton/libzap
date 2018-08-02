@@ -7,6 +7,7 @@
 #include <jansson.h>
 
 #include "../waves-c/src/crypto/waves_crypto.h"
+#include "../trezor-crypto/bip39.h"
 #include "zap.h"
 
 #define TESTNET_HOST "https://testnode1.wavesnodes.com"
@@ -231,6 +232,21 @@ cleanup:
         return balance;
     }
     return balance;
+}
+
+bool lzap_mnemonic_create(char *output, size_t size)
+{
+    const char *mnemonic = mnemonic_generate(128);
+    if (mnemonic == NULL)
+        return false;
+    size_t len = strlen(mnemonic);
+    if (len > size)
+    {
+        debug_print("output string not large enough (%lu bytes required)\n", len);
+        return false;
+    }
+    strncpy(output, mnemonic, size); 
+    return true;
 }
 
 bool lzap_test_curl()

@@ -13,6 +13,9 @@ int main()
     printf("%s - %s\n", seed, address);
     struct int_result_t balance = lzap_address_balance(address);
     printf("address balance success: %d\naddress balance value: %d\n", balance.success, balance.value);
+    char mnemonic[1024];
+    bool res = lzap_mnemonic_create(mnemonic, 1024);
+    printf("mnemonic create: %d\nmnemonic: %s\n:", res, mnemonic);
     printf("test curl: %d\n", lzap_test_curl());
     printf("test jansson: %d\n", lzap_test_jansson());
 }

@@ -26,6 +26,9 @@ add_subdirectory(../deps/jansson-2.11 build/jansson)
 
 project(zap)
 
+set(TREZOR ../trezor-crypto/)
+set(BIP39_SOURCE ${TREZOR}/bip39.c ${TREZOR}/hmac.c ${TREZOR}/rand.c ${TREZOR}/sha2.c ${TREZOR}/pbkdf2.c ${TREZOR}/memzero.c)
+
 set(SOURCE zap.c)
 
 if (ANDROID)
@@ -41,5 +44,5 @@ endif()
 
 set(CURL_LIBRARY "-lcurl") 
 find_package(CURL REQUIRED) 
-add_library(${PROJECT_NAME} SHARED ${SOURCE})
+add_library(${PROJECT_NAME} SHARED ${SOURCE} ${BIP39_SOURCE})
 target_link_libraries(${PROJECT_NAME} waves_c jansson ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LOG_LIBRARIES})
