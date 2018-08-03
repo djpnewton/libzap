@@ -3,49 +3,89 @@
 
 #include "zap.h"
 
-// -- Local helper functions --
+//
+// -- Logging definitions --
+//
 
-jobject create_jni_int_result(struct int_result_t ir)
+#define DEBUG 1
+#ifdef __ANDROID__
+    #include <android/log.h>
+    #define debug_print(fmt, ...) \
+        do { if (DEBUG) __android_log_print(ANDROID_LOG_ERROR, "LIBZAPjni", fmt, ##__VA_ARGS__); } while (0)
+#else
+    #define debug_print(fmt, ...) \
+        do { if (DEBUG) fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
+#endif
+
+//
+// -- Local helper functions --
+//
+
+jobject create_jni_int_result(JNIEnv *env, struct int_result_t ir)
 {
     jclass cls = (*env)->FindClass(env, "com/djpsoft/zap/plugin/IntResult");
     jmethodID constructor = (*env)->GetMethodID(env, cls, "<init>", "(ZI)V");
-    jobject instance = (*env)->NewObject(env, cls, constructor, ir.success, ir.value);
-    return instance;
+    return (*env)->NewObject(env, cls, constructor, ir.success, ir.value);
 }
 
-bool set_jni_object_str(jobject obj, char *name, char *val)
+bool set_jni_object_str(JNIEnv *env, jobject obj, char *name, char *val)
 {
     jobject jni_value = (*env)->NewStringUTF(env, val);
-    if (value == NULL)
-       return false;
+    if (jni_value == NULL)
+    {
+        debug_print("error jni_value is %p", jni_value);
+        return false;
+    }
     jclass cls = (*env)->GetObjectClass(env, obj);
+    if (!cls)
+    {
+        debug_print("error jclass is %p", cls);
+        return false;
+    }
     jfieldID fieldid = (*env)->GetFieldID(env, cls, name, "Ljava/lang/String;");
+    if (fieldid == 0)
+    {
+        debug_print("error fieldid is %d", fieldid);
+        return false;
+    }
     (*env)->SetObjectField(env, obj, fieldid, jni_value);
     return true;
 }
 
-bool set_jni_object_int(jobject obj, int val)
+bool set_jni_object_int(JNIEnv *env, jobject obj, char *name, int val)
 {
     jclass cls = (*env)->GetObjectClass(env, obj);
+    if (!cls)
+    {
+        debug_print("error jclass is %p", cls);
+        return false;
+    }
     jfieldID fieldid = (*env)->GetFieldID(env, cls, name, "I");
+    if (fieldid == 0)
+    {
+        debug_print("error fieldid is %d", fieldid);
+        return false;
+    }
     (*env)->SetIntField(env, obj, fieldid, val);
     return true;
 }
 
+//
 // -- Public functions --
+//
 
 JNIEXPORT jint JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_version(JNIEnv* env, jobject thiz)
 {
     return lzap_version();
 }
 
-JNIEXPORT void JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_set_1network(
+JNIEXPORT void JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_network_1set(
     JNIEnv* env, jobject thiz, jchar network_byte)
 {
     lzap_network_set(network_byte);
 }
 
-JNIEXPORT void JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1create(
+JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1create(
     JNIEnv* env, jobject thiz)
 {
     char output[1024];
@@ -78,7 +118,7 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1balance(
     // get result
     struct int_result_t balance = lzap_address_balance(c_address);
     // create java class to return result
-    return return create_jni_int_result(balance);
+    return create_jni_int_result(env, balance);
 }
 
 JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1transactions(
@@ -94,29 +134,31 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1transact
         result = lzap_address_transactions(c_address, c_txs, count);
         if (result.success)
         {
+            debug_print("got address transactions: %d", result.value);
             // first we need to populate jni txs
             result.success = false;
             // populate jni txs
             for (int i = 0; i < result.value; i++)
             {
-                jobject tx = (*env)->GetObjectArrayElement(txs, i);
-                if (!set_jni_object_str(tx, "Id", c_txs[i].id))
+                debug_print("populate jni array element #%d", i);
+                jobject tx = (*env)->GetObjectArrayElement(env, txs, i);
+                if (!set_jni_object_str(env, tx, "Id", c_txs[i].id))
                     goto cleanup;
-                if (!set_jni_object_str(tx, "Sender", c_txs[i].sender))
+                if (!set_jni_object_str(env, tx, "Sender", c_txs[i].sender))
                     goto cleanup;
-                if (!set_jni_object_str(tx, "Recipient", c_txs[i].recipient))
+                if (!set_jni_object_str(env, tx, "Recipient", c_txs[i].recipient))
                     goto cleanup;
-                if (!set_jni_object_str(tx, "AssetId", c_txs[i].asset_id))
+                if (!set_jni_object_str(env, tx, "AssetId", c_txs[i].asset_id))
                     goto cleanup;
-                if (!set_jni_object_str(tx, "FeeAsset", c_txs[i].fee_asset))
+                if (!set_jni_object_str(env, tx, "FeeAsset", c_txs[i].fee_asset))
                     goto cleanup;
-                if (!set_jni_object_str(tx, "Attachment", c_txs[i].attachment))
+                if (!set_jni_object_str(env, tx, "Attachment", c_txs[i].attachment))
                     goto cleanup;
-                if (!set_jni_object_int(tx, "Amount", c_txs[i].amount))
+                if (!set_jni_object_int(env, tx, "Amount", c_txs[i].amount))
                     goto cleanup;
-                if (!set_jni_object_int(tx, "Fee", c_txs[i].fee))
+                if (!set_jni_object_int(env, tx, "Fee", c_txs[i].fee))
                     goto cleanup;
-                if (!set_jni_object_int(tx, "Timestamp", c_txs[i].timestamp))
+                if (!set_jni_object_int(env, tx, "Timestamp", c_txs[i].timestamp))
                     goto cleanup;
             }
             // all jni object properties set
@@ -128,5 +170,5 @@ cleanup:
     if (c_txs)
         free(c_txs);
     // create java class to return result
-    return return create_jni_int_result(result);
+    return create_jni_int_result(env, result);
 }
