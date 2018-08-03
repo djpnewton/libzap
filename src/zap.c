@@ -10,13 +10,22 @@
 #include "../trezor-crypto/bip39.h"
 #include "zap.h"
 
+//
+// -- Waves constants --
+//
+
 #define TESTNET_HOST "https://testnode1.wavesnodes.com"
 #define MAINNET_HOST "https://nodes.wavesnodes.com"
 
 #define TESTNET_ASSETID "35twb3NRL7cZwD1JjPHGzFLQ1P4gtUutTuFEXAg1f1hG"
 #define MAINNET_ASSETID "nada"
 
+//
+// -- Implementation details -- 
+//
+
 #define MAX_FILENAME 1024
+#define MAX_URL 1024
 
 #define MAX_CURL_DATA (1024*20)
 struct curl_data_t
@@ -25,7 +34,15 @@ struct curl_data_t
     char ptr[MAX_CURL_DATA];
 };
 
-unsigned char g_network = 'T';
+//
+// -- Library globals --
+//
+
+char g_network = 'T';
+
+//
+// -- Logging definitions --
+//
 
 #define DEBUG 1
 #ifdef __ANDROID__
@@ -36,6 +53,10 @@ unsigned char g_network = 'T';
     #define debug_print(fmt, ...) \
         do { if (DEBUG) fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
 #endif
+
+//
+// -- Internal functions --
+//
 
 void check_network()
 {
@@ -64,18 +85,23 @@ bool curl_cacert_pem_filename(char filename[MAX_FILENAME])
     memset(filename, 0, MAX_FILENAME);
     FILE *f = fopen("/proc/self/cmdline", "r");
     if (f == NULL)
+    {
+        debug_print("unabled to open /proc/self/cmdline\n");
         return false;
+    }
     size_t result = fread(cmdline, 1, MAX_FILENAME, f);
     fclose(f);
     if (result > 0)
     {
-        debug_print("command line: %s\n", cmdline);
         int res = snprintf(filename, MAX_FILENAME, "/data/data/%s/cacert.pem", cmdline);
         if (res < 0 || res >= MAX_FILENAME)
+        {
+            debug_print("unable to create cacert.pem filename\n");
             return false;
-        debug_print("cacert_pem_filename: %s\n", filename);
+        }
         return true;
     }
+    debug_print("unable to read /proc/self/cmdline\n");
     return false;
 }
 
@@ -107,13 +133,13 @@ bool cacert_pem_file_write()
 }
 #endif
 
-static size_t write_data(void *ptr, size_t size, size_t nmemb, void *userdata)
+static size_t curl_write_data(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
     struct curl_data_t* data = (struct curl_data_t*)userdata;
     int remaining = MAX_CURL_DATA - data->len;
     if (remaining < nmemb)
     {
-        debug_print("write_data: remaining (%d) <  nmemb (%zu)\n", remaining, nmemb);
+        debug_print("curl_write_data: remaining (%d) <  nmemb (%zu)\n", remaining, nmemb);
         return 0;
     }
     memcpy(data->ptr + data->len, ptr, nmemb);
@@ -139,7 +165,7 @@ bool get_url(const char *url, struct curl_data_t *data)
     {
         CURLcode res;
         curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_data);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
 #ifdef __ANDROID__
         char filename[MAX_FILENAME];
@@ -163,7 +189,6 @@ bool get_url(const char *url, struct curl_data_t *data)
 
 bool get_waves_endpoint(const char *endpoint, struct curl_data_t *data)
 {
-#define MAX_URL 1024
     char url[MAX_URL];
     int res = snprintf(url, MAX_URL, "%s%s", network_host(), endpoint);
     if (res < 0 || res >= MAX_URL)
@@ -176,29 +201,55 @@ void print_json_error(const char *function, json_error_t *error)
     debug_print("%s: %s - source: %s\n", function, error->text, error->source);
 }
 
+//
+// -- PUBLIC FUNCTIONS --
+//
+
 int lzap_version()
 {
     return 1;
 }
 
-void lzap_set_network(unsigned char network_byte)
+void lzap_network_set(char network_byte)
 {
     g_network = network_byte;
 }
 
-void lzap_seed_to_address(const unsigned char *key, unsigned char *output)
+bool lzap_mnemonic_create(char *output, size_t size)
+{
+    const char *mnemonic = mnemonic_generate(128);
+    if (mnemonic == NULL)
+    {
+        debug_print("mnemonic_generate failed\n");
+        return false;
+    }
+    size_t len = strlen(mnemonic);
+    if (len > size)
+    {
+        debug_print("output string not large enough (%zu bytes required)\n", len);
+        return false;
+    }
+    strncpy(output, mnemonic, size); 
+    return true;
+}
+
+bool lzap_mnemonic_check(char *mnemonic)
+{
+    return mnemonic_check(mnemonic);
+}
+
+void lzap_seed_to_address(const char *key, char *output)
 {
     check_network();
     waves_seed_to_address(key, g_network, output);
 }
 
-struct int_result_t lzap_address_balance(const unsigned char *address)
+struct int_result_t lzap_address_balance(const char *address)
 {
     check_network();
 
     struct int_result_t balance = { false, 0 };
 
-#define MAX_URL 1024
     char endpoint[MAX_URL];
     int res = snprintf(endpoint, MAX_URL, "/assets/balance/%s/%s", address, network_assetid());
     if (res < 0 || res >= MAX_URL)
@@ -232,58 +283,4 @@ cleanup:
         return balance;
     }
     return balance;
-}
-
-bool lzap_mnemonic_create(char *output, size_t size)
-{
-    const char *mnemonic = mnemonic_generate(128);
-    if (mnemonic == NULL)
-    {
-        debug_print("mnemonic_generate failed\n");
-        return false;
-    }
-    size_t len = strlen(mnemonic);
-    if (len > size)
-    {
-        debug_print("output string not large enough (%zu bytes required)\n", len);
-        return false;
-    }
-    strncpy(output, mnemonic, size); 
-    return true;
-}
-
-bool lzap_mnemonic_check(char *mnemonic)
-{
-    return mnemonic_check(mnemonic);
-}
-
-bool lzap_test_curl()
-{
-    struct curl_data_t data;
-    bool res = get_url("http://example.com", &data);
-    if (res)
-    {
-        //printf("got url:\n");
-        //printf("%s\n", data.ptr);
-    }
-    return res;
-}
-
-bool lzap_test_jansson()
-{
-    bool result = false;
-    json_t *root;
-    json_error_t error;
-    root = json_loads("{\"test\": 123}", 0, &error);
-    if (!root)
-        return result;
-    if (!json_is_object(root))
-        goto cleanup;
-    json_t* test = json_object_get(root, "test");
-    if (!json_is_integer(test))
-        goto cleanup;
-    result = json_integer_value(test) == 123;
-cleanup:
-    json_decref(root);
-    return result;
 }

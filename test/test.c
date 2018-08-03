@@ -7,7 +7,7 @@ int main()
 {
     char* seed = "daniel";
     char address[1024];
-    lzap_set_network('T');
+    lzap_network_set('T');
     printf("libzap version %d\n", lzap_version());
     lzap_seed_to_address(seed, address);
     printf("%s - %s\n", seed, address);
@@ -18,6 +18,4 @@ int main()
     printf("mnemonic create: %d\nmnemonic: %s\n", res, mnemonic);
     printf("mnemonic check: %d\n", lzap_mnemonic_check(mnemonic));
     printf("mnemonic check bad: %d\n", !lzap_mnemonic_check("blah one two"));
-    printf("test curl: %d\n", lzap_test_curl());
-    printf("test jansson: %d\n", lzap_test_jansson());
 }

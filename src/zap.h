@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 
-#define MAX_ERR 1024
 struct int_result_t
 {
     bool success;
@@ -15,15 +14,11 @@ struct int_result_t
 extern "C" {
 #endif
     int lzap_version();
-    void lzap_set_network(unsigned char network_byte);
-    void lzap_seed_to_address(const unsigned char *key, unsigned char *output);
-    struct int_result_t lzap_address_balance(const unsigned char *address);
+    void lzap_network_set(char network_byte);
     bool lzap_mnemonic_create(char *output, size_t size);
     bool lzap_mnemonic_check(char *mnemonic);
-
-
-    bool lzap_test_curl();
-    bool lzap_test_jansson();
+    void lzap_seed_to_address(const char *key, char *output);
+    struct int_result_t lzap_address_balance(const char *address);
 #ifdef __cplusplus
 }
 #endif
