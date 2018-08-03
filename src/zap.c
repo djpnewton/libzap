@@ -27,7 +27,7 @@
 #define MAX_FILENAME 1024
 #define MAX_URL 1024
 
-#define MAX_CURL_DATA (1024*20)
+#define MAX_CURL_DATA (1024*100)
 struct curl_data_t
 {
     int len;
@@ -283,4 +283,151 @@ cleanup:
         return balance;
     }
     return balance;
+}
+
+bool get_json_string(json_t *string_field, char *target, int max)
+{
+    if (!json_is_string(string_field))
+    {
+        if (json_is_null(string_field))
+        {
+            memset(target, 0, max);
+            return true;
+        }
+        debug_print("string_field is not a string\n");
+        return false;
+    }
+    const char *value = json_string_value(string_field);
+    if (strlen(value) > max-1)
+    {
+        debug_print("string_field is too large (%zu > %d)\n", strlen(value), max-1);
+        return false;
+    }
+    strncpy(target, value, max);
+    return true;
+}
+
+bool get_json_int(json_t *int_field, long *target)
+{
+    if (!json_is_integer(int_field))
+    {
+        debug_print("int_field is not an int\n");
+        return false;
+    }
+    *target = json_integer_value(int_field);
+    return true;
+}
+
+bool get_json_string_from_object(json_t *object, const char *field_name, char *target, int max)
+{
+    json_t *field = json_object_get(object, field_name);
+    return get_json_string(field, target, max);
+}
+
+bool get_json_int_from_object(json_t *object, const char *field_name, long *target)
+{
+    json_t *field = json_object_get(object, field_name);
+    return get_json_int(field, target);
+}
+
+struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count)
+{
+    check_network();
+
+    struct int_result_t result = { false, 0 };
+
+    char endpoint[MAX_URL];
+    int res = snprintf(endpoint, MAX_URL, "/transactions/address/%s/limit/%d", address, count);
+    if (res < 0 || res >= MAX_URL)
+        return result;
+    struct curl_data_t data;
+    if (get_waves_endpoint(endpoint, &data))
+    {
+        json_t *root;
+        json_error_t error;
+        root = json_loads(data.ptr, 0, &error);
+        if (!root)
+        {
+            print_json_error("lzap_address_transactions", &error);
+            return result;
+        }
+        if (!json_is_array(root))
+        {
+            debug_print("lzap_address_transactions: json root is not an array\n");
+            goto cleanup;
+        }
+        if (!json_array_size(root) == 1)
+        {
+            debug_print("lzap_address_transactions: json root array is not of size 1\n");
+            goto cleanup;
+        }
+        json_t *tx_array = json_array_get(root, 0);
+        if (!json_is_array(tx_array))
+        {
+            debug_print("lzap_address_transactions: tx_array is not an array\n");
+            goto cleanup;
+        }
+        for (int i = 0; i < json_array_size(tx_array); i++)
+        {
+            printf("tx#%d\n", i);
+            json_t *tx_object = json_array_get(tx_array, i);
+            if (!json_is_object(tx_object))
+            {
+                debug_print("lzap_address_transactions: tx_object is not an object\n");
+                goto cleanup;
+            }
+            if (!get_json_string_from_object(tx_object, "id", txs[i].id, MAX_TXFIELD))
+            {
+                debug_print("lzap_address_transactions: failed to get tx id\n");
+                goto cleanup;
+            }
+            if (!get_json_string_from_object(tx_object, "sender", txs[i].sender, MAX_TXFIELD))
+            {
+                debug_print("lzap_address_transactions: failed to get tx sender\n");
+                goto cleanup;
+            }
+            if (!get_json_string_from_object(tx_object, "recipient", txs[i].recipient, MAX_TXFIELD))
+            {
+                debug_print("lzap_address_transactions: failed to get tx recipient\n");
+                goto cleanup;
+            }
+            if (!get_json_string_from_object(tx_object, "assetId", txs[i].asset_id, MAX_TXFIELD))
+            {
+                debug_print("lzap_address_transactions: failed to get tx asset_id\n");
+                goto cleanup;
+            }
+            if (!get_json_string_from_object(tx_object, "feeAsset", txs[i].fee_asset, MAX_TXFIELD))
+            {
+                debug_print("lzap_address_transactions: failed to get tx fee_asset\n");
+                goto cleanup;
+            }
+            if (!get_json_string_from_object(tx_object, "attachment", txs[i].attachment, MAX_TXFIELD))
+            {
+                debug_print("lzap_address_transactions: failed to get tx attachment\n");
+                goto cleanup;
+            }
+            if (!get_json_int_from_object(tx_object, "amount", &txs[i].amount))
+            {
+                debug_print("lzap_address_transactions: failed to get tx amount\n");
+                goto cleanup;
+            }
+            if (!get_json_int_from_object(tx_object, "fee", &txs[i].fee))
+            {
+                debug_print("lzap_address_transactions: failed to get tx fee\n");
+                goto cleanup;
+            }
+            if (!get_json_int_from_object(tx_object, "timestamp", &txs[i].timestamp))
+            {
+                debug_print("lzap_address_transactions: failed to get tx timestamp\n");
+                goto cleanup;
+            }
+
+            result.value = i + 1;
+        }
+        result.success = true;
+cleanup:
+        json_decref(root);
+        return result;
+    }
+    return result;
 }
