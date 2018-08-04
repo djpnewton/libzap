@@ -6,7 +6,7 @@
 struct int_result_t
 {
     bool success;
-    int value;
+    long value;
 };
 
 #define MAX_TXFIELD 1024
@@ -43,7 +43,8 @@ extern "C" {
     void lzap_seed_to_address(const char *seed, char *output);
     struct int_result_t lzap_address_balance(const char *address);
     struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count);
-    struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, int amount, const char *attachment);
+    struct int_result_t lzap_transaction_fee();
+    struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, long amount, long fee, const char *attachment);
 #ifdef __cplusplus
 }
 #endif

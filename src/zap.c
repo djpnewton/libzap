@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
+#include <math.h>
 
 #include <curl/curl.h>
 #include <jansson.h>
@@ -247,47 +248,6 @@ void lzap_seed_to_address(const char *seed, char *output)
     waves_seed_to_address(seed, g_network, output);
 }
 
-struct int_result_t lzap_address_balance(const char *address)
-{
-    check_network();
-
-    struct int_result_t balance = { false, 0 };
-
-    char endpoint[MAX_URL];
-    int res = snprintf(endpoint, MAX_URL, "/assets/balance/%s/%s", address, network_assetid());
-    if (res < 0 || res >= MAX_URL)
-        return balance;
-    struct curl_data_t data;
-    if (get_waves_endpoint(endpoint, &data))
-    {
-        json_t *root;
-        json_error_t error;
-        root = json_loads(data.ptr, 0, &error);
-        if (!root)
-        {
-            print_json_error("lzap_address_balance", &error);
-            return balance;
-        }
-        if (!json_is_object(root))
-        {
-            debug_print("lzap_address_balance: json root is not an object\n");
-            goto cleanup;
-        }
-        json_t* balance_field = json_object_get(root, "balance");
-        if (!json_is_integer(balance_field))
-        {
-            debug_print("lzap_address_balance: balance field is not an integer\n");
-            goto cleanup;
-        }
-        balance.value = json_integer_value(balance_field);
-        balance.success = true;
-cleanup:
-        json_decref(root);
-        return balance;
-    }
-    return balance;
-}
-
 bool get_json_string(json_t *string_field, char *target, int max)
 {
     if (!json_is_string(string_field))
@@ -331,6 +291,45 @@ bool get_json_int_from_object(json_t *object, const char *field_name, long *targ
 {
     json_t *field = json_object_get(object, field_name);
     return get_json_int(field, target);
+}
+
+struct int_result_t lzap_address_balance(const char *address)
+{
+    check_network();
+
+    struct int_result_t balance = { false, 0 };
+
+    char endpoint[MAX_URL];
+    int res = snprintf(endpoint, MAX_URL, "/assets/balance/%s/%s", address, network_assetid());
+    if (res < 0 || res >= MAX_URL)
+        return balance;
+    struct curl_data_t data;
+    if (get_waves_endpoint(endpoint, &data))
+    {
+        json_t *root;
+        json_error_t error;
+        root = json_loads(data.ptr, 0, &error);
+        if (!root)
+        {
+            print_json_error("lzap_address_balance", &error);
+            return balance;
+        }
+        if (!json_is_object(root))
+        {
+            debug_print("lzap_address_balance: json root is not an object\n");
+            goto cleanup;
+        }
+        if (!get_json_int_from_object(root, "balance", &balance.value))
+        {
+            debug_print("lzap_address_balance: failed to get balance\n");
+            goto cleanup;
+        }
+        balance.success = true;
+cleanup:
+        json_decref(root);
+        return balance;
+    }
+    return balance;
 }
 
 struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count)
@@ -435,7 +434,59 @@ cleanup:
     return result;
 }
 
-struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, int amount, const char *attachment)
+struct int_result_t lzap_transaction_fee()
+{
+    check_network();
+
+    struct int_result_t result = { false, 0 };
+
+    // first get the asset info
+    char endpoint[MAX_URL];
+    int res = snprintf(endpoint, MAX_URL, "/assets/details/%s", network_assetid());
+    if (res < 0 || res >= MAX_URL)
+        return result;
+    struct curl_data_t data;
+    if (get_waves_endpoint(endpoint, &data))
+    {
+        json_t *root;
+        json_error_t error;
+        root = json_loads(data.ptr, 0, &error);
+        if (!root)
+        {
+            print_json_error("lzap_transaction_fee: could not parse json", &error);
+            return result;
+        }
+        if (!json_is_object(root))
+        {
+            debug_print("lzap_transaction_fee: json root is not an object\n");
+            goto cleanup;
+        }
+        long min_asset_fee;
+        if (!get_json_int_from_object(root, "minSponsoredAssetFee", &min_asset_fee))
+        {
+            debug_print("lzap_transaction_fee: failed to get min sponsored asset fee\n");
+            goto cleanup;
+        }
+        long decimals;
+        if (!get_json_int_from_object(root, "decimals", &decimals))
+        {
+            debug_print("lzap_transaction_fee: failed to get decimals\n");
+            goto cleanup;
+        }
+        // sanity check
+        assert(min_asset_fee / pow(10, decimals < 1));
+        // return result
+        result.value = min_asset_fee;
+        result.success = true;
+cleanup:
+        json_decref(root);
+        return result;
+    }
+    return result;
+
+}
+
+struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, long amount, long fee, const char *attachment)
 {
     check_network();
 
@@ -476,8 +527,7 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     memcpy(tx.fee_asset_id, asset_id_raw, asset_id_raw_sz);
     tx.timestamp = time(NULL);
     tx.amount = amount;
-    //TODO: get fee rate from asset info!!!
-    tx.fee = 10;
+    tx.fee = fee;
     memset(tx.recipient_address_or_alias, 0, sizeof(tx.recipient_address_or_alias));
     memcpy(tx.recipient_address_or_alias, recipient_raw, recipient_raw_sz);
     tx.attachment_length = strlen(attachment);

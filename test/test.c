@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
 
@@ -26,7 +27,7 @@ int main()
 
     // address balance
     struct int_result_t balance = lzap_address_balance(address);
-    printf("address balance success: %d\naddress balance value: %d\n", balance.success, balance.value);
+    printf("address balance success: %d\naddress balance value: %ld\n", balance.success, balance.value);
 
     // address transactions 
     struct tx_t txs[100];
@@ -44,6 +45,8 @@ int main()
         }
 
     // spend tx
-    struct spend_tx_t tx = lzap_transaction_create(mnemonic, address, 1000, "blah blah");
+    struct int_result_t fee = lzap_transaction_fee();
+    assert(fee.success);
+    struct spend_tx_t tx = lzap_transaction_create(mnemonic, address, 1000, fee.value, "blah blah");
     printf("transaction create:\n\tsuccess: %d\n\tbytes: %s\n\tlength: %lu\n\tsignature: %s\n", tx.success, tx.tx_bytes, tx.tx_bytes_size, tx.signature);
 }

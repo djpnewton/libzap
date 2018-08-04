@@ -24,7 +24,7 @@
 jobject create_jni_int_result(JNIEnv *env, struct int_result_t ir)
 {
     jclass cls = (*env)->FindClass(env, "com/djpsoft/zap/plugin/IntResult");
-    jmethodID constructor = (*env)->GetMethodID(env, cls, "<init>", "(ZI)V");
+    jmethodID constructor = (*env)->GetMethodID(env, cls, "<init>", "(ZJ)V");
     return (*env)->NewObject(env, cls, constructor, ir.success, ir.value);
 }
 
@@ -66,7 +66,7 @@ bool set_jni_object_int(JNIEnv *env, jobject obj, char *name, int val)
         debug_print("error fieldid is %d", fieldid);
         return false;
     }
-    (*env)->SetIntField(env, obj, fieldid, val);
+    (*env)->SetLongField(env, obj, fieldid, val);
     return true;
 }
 
@@ -102,11 +102,11 @@ JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1check(
 }
 
 JNIEXPORT jstring JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_seed_1to_1address(
-    JNIEnv* env, jobject thiz, jstring key)
+    JNIEnv* env, jobject thiz, jstring seed)
 {
-    char* c_key = strdup((*env)->GetStringUTFChars(env, key, 0));
+    char* c_seed = strdup((*env)->GetStringUTFChars(env, seed, 0));
     char output[1024];
-    lzap_seed_to_address(c_key, output);
+    lzap_seed_to_address(c_seed, output);
     return (*env)->NewStringUTF(env, output);
 }
 
@@ -171,6 +171,15 @@ cleanup:
         free(c_txs);
     // create java class to return result
     return create_jni_int_result(env, result);
+}
+
+JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1fee(
+    JNIEnv* env, jobject thiz)
+{
+    // get result
+    struct int_result_t balance = lzap_transaction_fee();
+    // create java class to return result
+    return create_jni_int_result(env, balance);
 }
 
 JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1create(
