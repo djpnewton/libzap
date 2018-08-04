@@ -47,6 +47,7 @@ int main()
     // spend tx
     struct int_result_t fee = lzap_transaction_fee();
     assert(fee.success);
+    printf("transaction fee: %lu\n", fee.value);
     struct spend_tx_t tx = lzap_transaction_create(mnemonic, address, 1000, fee.value, "blah blah");
     printf("transaction create:\n\tsuccess: %d\n\tbytes: %s\n\tlength: %lu\n\tsignature: %s\n", tx.success, tx.tx_bytes, tx.tx_bytes_size, tx.signature);
 }

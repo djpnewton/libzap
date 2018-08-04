@@ -21,7 +21,7 @@
 #define TESTNET_HOST "https://testnode1.wavesnodes.com"
 #define MAINNET_HOST "https://nodes.wavesnodes.com"
 
-#define TESTNET_ASSETID "35twb3NRL7cZwD1JjPHGzFLQ1P4gtUutTuFEXAg1f1hG"
+#define TESTNET_ASSETID "CgUrFtinLXEbJwJVjwwcppk4Vpz1nMmR3H5cQaDcUcfe"
 #define MAINNET_ASSETID "nada"
 
 //
@@ -371,7 +371,6 @@ struct int_result_t lzap_address_transactions(const char *address, struct tx_t *
         }
         for (int i = 0; i < json_array_size(tx_array); i++)
         {
-            printf("tx#%d\n", i);
             json_t *tx_object = json_array_get(tx_array, i);
             if (!json_is_object(tx_object))
             {
