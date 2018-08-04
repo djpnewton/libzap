@@ -59,10 +59,9 @@ void waves_public_key_to_address(const curve25519_public_key public_key, const u
     b58enc((char *) output, &length, address, 26);
 }
 
-void waves_seed_to_address(const unsigned char *key, const unsigned char network_byte, unsigned char *output) {
+void waves_seed_to_privkey(const unsigned char *key, curve25519_secret_key privkey, curve25519_public_key pubkey) {
     char realkey[1024] = {0, 0, 0, 0};
     memcpy(&realkey[4], key, strlen((const char *) key));
-    uint8_t privkey[32];
 
     SHA256_CTX ctx;
 
@@ -76,9 +75,14 @@ void waves_seed_to_address(const unsigned char *key, const unsigned char network
     privkey[31] &= 127;
     privkey[31] |= 64;
 
-    uint8_t pubkey[32];
-
     curve25519_keygen(pubkey, privkey);
+}
+
+void waves_seed_to_address(const unsigned char *key, const unsigned char network_byte, unsigned char *output) {
+    curve25519_secret_key privkey;
+    curve25519_public_key pubkey;
+
+    waves_seed_to_privkey(key, privkey, pubkey);
 
     waves_public_key_to_address(pubkey, network_byte, output);
 }

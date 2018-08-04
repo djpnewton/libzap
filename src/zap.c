@@ -2,11 +2,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <curl/curl.h>
 #include <jansson.h>
 
 #include "../waves-c/src/crypto/waves_crypto.h"
+#include "../waves-c/src/crypto/base58/libbase58.h"
+#include "../waves-c/src/crypto/transactions/transfer_transaction.h"
 #include "../trezor-crypto/bip39.h"
 #include "zap.h"
 
@@ -238,10 +241,10 @@ bool lzap_mnemonic_check(char *mnemonic)
     return mnemonic_check(mnemonic);
 }
 
-void lzap_seed_to_address(const char *key, char *output)
+void lzap_seed_to_address(const char *seed, char *output)
 {
     check_network();
-    waves_seed_to_address(key, g_network, output);
+    waves_seed_to_address(seed, g_network, output);
 }
 
 struct int_result_t lzap_address_balance(const char *address)
@@ -429,5 +432,75 @@ cleanup:
         json_decref(root);
         return result;
     }
+    return result;
+}
+
+struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, int amount, const char *attachment)
+{
+    check_network();
+
+    struct spend_tx_t result = {};
+
+    // get private and public key
+    curve25519_secret_key privkey;
+    curve25519_public_key pubkey;
+    waves_seed_to_privkey(seed, privkey, pubkey); 
+
+    // decode base58 recipient
+    char recipient_raw[32] = {};
+    size_t recipient_raw_sz = 32;
+    if (!b58tobin(recipient_raw, &recipient_raw_sz, recipient, 0))
+    {
+        debug_print("lzap_transaction_create: failed to decode recipient\n");
+        return result;
+    }
+
+    // decode base58 asset id
+    char asset_id_raw[1024] = {};
+    size_t asset_id_raw_sz = 1024;
+    if (!b58tobin(asset_id_raw, &asset_id_raw_sz, network_assetid(), 0))
+    {
+        debug_print("lzap_transaction_create: failed to decode asset id\n");
+        return result;
+    }
+
+    // create structure
+    TransferTransactionsBytes tx = {};
+    tx.type = 4;
+    memcpy(tx.sender_public_key, pubkey, sizeof(pubkey));
+    tx.amount_asset_flag = 1;
+    memset(tx.amount_asset_id, 0, sizeof(tx.amount_asset_id));
+    memcpy(tx.amount_asset_id, asset_id_raw, asset_id_raw_sz);
+    tx.fee_asset_flag = 1;
+    memset(tx.fee_asset_id, 0, sizeof(tx.fee_asset_id));
+    memcpy(tx.fee_asset_id, asset_id_raw, asset_id_raw_sz);
+    tx.timestamp = time(NULL);
+    tx.amount = amount;
+    //TODO: get fee rate from asset info!!!
+    tx.fee = 10;
+    memset(tx.recipient_address_or_alias, 0, sizeof(tx.recipient_address_or_alias));
+    memcpy(tx.recipient_address_or_alias, recipient_raw, recipient_raw_sz);
+    tx.attachment_length = strlen(attachment);
+    memset(tx.attachment, 0, sizeof(tx.attachment));
+    size_t sz = strlen(attachment);
+    if (sz > sizeof(tx.attachment))
+        sz = sizeof(tx.attachment);
+    memcpy(tx.attachment, attachment, sz);
+
+    // convert to byte array
+    if (!waves_transfer_transaction_to_bytes(&tx, result.tx_bytes, &result.tx_bytes_size, 0))
+    {
+        debug_print("lzap_transaction_create: failed to convert to bytes\n");
+        return result;
+    }
+
+    // sign tx
+    if (!waves_message_sign(&privkey, result.tx_bytes, result.tx_bytes_size, result.signature))
+    {
+        debug_print("lzap_transaction_create: failed to create signature\n");
+        return result;
+    }
+
+    result.success = true;
     return result;
 }

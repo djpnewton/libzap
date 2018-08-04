@@ -42,4 +42,8 @@ int main()
             printf("    amount: %ld\n    fee: %ld\n    timestamp: %ld\n",
                 txs[i].amount, txs[i].fee, txs[i].timestamp);
         }
+
+    // spend tx
+    struct spend_tx_t tx = lzap_transaction_create(mnemonic, address, 1000, "blah blah");
+    printf("transaction create:\n\tsuccess: %d\n\tbytes: %s\n\tlength: %lu\n\tsignature: %s\n", tx.success, tx.tx_bytes, tx.tx_bytes_size, tx.signature);
 }

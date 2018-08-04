@@ -172,3 +172,10 @@ cleanup:
     // create java class to return result
     return create_jni_int_result(env, result);
 }
+
+JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1create(
+    JNIEnv* env, jobject thiz, jstring seed, jstring recipient, jint amount, jstring attachment)
+{
+    //TODO!!!
+}
+
