@@ -25,4 +25,5 @@ public class zap_jni {
     public static native IntResult address_transactions(String address, Tx[] txs, int count);
     public static native IntResult transaction_fee();
     public static native SpendTx transaction_create(String seed, String recipient, long amount, long fee, String attachment);
+    public static native int transaction_broadcast(SpendTx spend_tx);
 }

@@ -177,16 +177,61 @@ bool get_url(const char *url, struct curl_data_t *data)
             curl_easy_setopt(curl, CURLOPT_CAINFO, filename);
 #endif
         res = curl_easy_perform(curl);
-        curl_easy_cleanup(curl);
         if (res == CURLE_OK)
         {
             long response_code;
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
             if (response_code == 200)
+            {
+                curl_easy_cleanup(curl);
                 return true;
+            }
             debug_print("get_url: response_code (%ld, %s)\n", response_code, url);
         }
         debug_print("get_url: curl code (%u, %s)\n", res, url);
+        curl_easy_cleanup(curl);
+    }
+    return false;
+}
+
+bool post_url(const char *url, const char *post_data)
+{
+#ifdef __ANDROID__
+    if (!cacert_pem_file_write())
+    {
+        debug_print("failed to write/check the cacert pem file\n");
+        return false;
+    }
+#endif
+    // use curl to request
+    CURL* curl = curl_easy_init();
+    if (curl)
+    {
+        struct curl_slist *headers = NULL;
+        CURLcode res;
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
+#ifdef __ANDROID__
+        char filename[MAX_FILENAME];
+        if (curl_cacert_pem_filename(filename))
+            curl_easy_setopt(curl, CURLOPT_CAINFO, filename);
+#endif
+        res = curl_easy_perform(curl);
+        if (res == CURLE_OK)
+        {
+            long response_code;
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+            if (response_code == 200)
+            {
+                curl_easy_cleanup(curl);
+                return true;
+            }
+            debug_print("post_url: response_code (%ld, %s)\n", response_code, url);
+        }
+        debug_print("post_url: curl code (%u, %s)\n", res, url);
+        curl_easy_cleanup(curl);
     }
     return false;
 }
@@ -198,6 +243,15 @@ bool get_waves_endpoint(const char *endpoint, struct curl_data_t *data)
     if (res < 0 || res >= MAX_URL)
         return false;
     return get_url(url, data);
+}
+
+bool post_waves_endpoint(const char *endpoint, const char *post_data)
+{
+    char url[MAX_URL];
+    int res = snprintf(url, MAX_URL, "%s%s", network_host(), endpoint);
+    if (res < 0 || res >= MAX_URL)
+        return false;
+    return post_url(url, post_data);
 }
 
 void print_json_error(const char *function, json_error_t *error)
@@ -551,5 +605,105 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     }
 
     result.success = true;
+    return result;
+}
+
+bool json_set_string(json_t *object, char *field, char *value)
+{
+    if (json_object_set_new(object, field, json_string(value)) == -1)
+    {
+        debug_print("json_set_string: failed to set json field '%s'\n", field);
+        return false;
+    }
+    return true;
+}
+
+bool json_set_int(json_t *object, char *field, long value)
+{
+    if (json_object_set_new(object, field, json_integer(value)) == -1)
+    {
+        debug_print("json_set_int: failed to set json field '%s'\n", field);
+        return false;
+    }
+    return true;
+}
+
+bool lzap_transaction_broadcast(struct spend_tx_t spend_tx)
+{
+    check_network();
+
+    bool result = false;
+    char *json_data = NULL;
+    json_t *root = NULL;
+
+    // first parse the transaction and encode the strings to base58
+    TransferTransactionsBytes ttx_bytes;
+    if (!waves_parse_transfer_transaction(spend_tx.tx_bytes, 0, &ttx_bytes))
+    {
+        debug_print("lzap_transaction_broadcast: failed to parse tx data\n");
+        goto cleanup;
+    }
+    char asset_id_b58[45];
+    char sender_public_key_b58[45];
+    char recipient_b58[45];
+    char fee_asset_id_b58[45];
+    char attachment_b58[192];
+    char signature_b58[128];
+#define b58_enc(name, target, source)                   \
+    {                                                   \
+        long tmp = sizeof(target);                      \
+        b58enc(target, &tmp, source, sizeof(source));   \
+        printf("%s: %s - %s\n", name, target, source); \
+    }
+    b58_enc("asset_id", asset_id_b58, ttx_bytes.amount_asset_id);
+    b58_enc("sender_public_key", sender_public_key_b58, ttx_bytes.sender_public_key);
+    b58_enc("recipient", recipient_b58, ttx_bytes.recipient_address_or_alias);
+    b58_enc("fee_asset_id", fee_asset_id_b58, ttx_bytes.fee_asset_id);
+    b58_enc("attachment", attachment_b58, ttx_bytes.attachment);
+    b58_enc("signature", signature_b58, spend_tx.signature);
+
+    // now create the json
+    root = json_object();
+    if (root == NULL)
+    {
+        debug_print("lzap_transaction_broadcast: failed to create root json object\n");
+        goto cleanup;
+    }
+    if (!json_set_string(root, "assetId", asset_id_b58))
+        goto cleanup;
+    if (!json_set_string(root, "senderPublicKey", sender_public_key_b58))
+        goto cleanup;
+    if (!json_set_string(root, "recipient", recipient_b58))
+        goto cleanup;
+    if (!json_set_int(root, "fee", ttx_bytes.fee))
+        goto cleanup;
+    if (!json_set_string(root, "feeAssetId", fee_asset_id_b58))
+        goto cleanup;
+    if (!json_set_int(root, "amount", ttx_bytes.amount))
+        goto cleanup;
+    if (!json_set_string(root, "attachment", attachment_b58))
+        goto cleanup;
+    if (!json_set_int(root, "timestamp", ttx_bytes.timestamp))
+        goto cleanup;
+    debug_print("%s\n", spend_tx.signature);
+    if (!json_set_string(root, "signature", signature_b58))
+        goto cleanup;
+    json_data = json_dumps(root, 0);
+    if (json_data == NULL)
+    {
+        debug_print("lzap_transaction_broadcast: failed to create json_data \n");
+        goto cleanup;
+    }
+    debug_print("lzap_transaction_broadcast: json_data '%s'\n", json_data);
+
+    // now broadcast the data
+    char *endpoint = "/assets/broadcast/transfer";
+    result = post_waves_endpoint(endpoint, json_data);
+
+cleanup:
+    if (root)
+        json_decref(root);
+    if (json_data)
+        free(json_data);
     return result;
 }
