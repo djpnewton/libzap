@@ -11,6 +11,7 @@
 #include "../waves-c/src/crypto/waves_crypto.h"
 #include "../waves-c/src/crypto/base58/libbase58.h"
 #include "../waves-c/src/crypto/transactions/transfer_transaction.h"
+#include "../waves-c/src/crypto/sha256.h"
 #include "../trezor-crypto/bip39.h"
 #include "zap.h"
 
@@ -259,6 +260,15 @@ void print_json_error(const char *function, json_error_t *error)
     debug_print("%s: %s - source: %s\n", function, error->text, error->source);
 }
 
+bool zap_sha256(void *digest, const void *data, size_t datasz)
+{
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
+    sha256_update(&ctx, data, datasz);
+    sha256_final(&ctx, digest);
+    return true;
+}
+
 //
 // -- PUBLIC FUNCTIONS --
 //
@@ -291,7 +301,7 @@ bool lzap_mnemonic_create(char *output, size_t size)
     return true;
 }
 
-bool lzap_mnemonic_check(char *mnemonic)
+bool lzap_mnemonic_check(const char *mnemonic)
 {
     return mnemonic_check(mnemonic);
 }
@@ -559,6 +569,16 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
         return result;
     }
 
+    // check base58 recipient
+    b58_sha256_impl = zap_sha256;
+    int b58chk = b58check(recipient_bytes, recipient_bytes_sz, recipient);
+    if (b58chk < 0)
+    {
+        debug_print("lzap_transaction_create: error checking base58 decoded recipient (%d)\n", b58chk);
+        //TODO: fixx!!!
+        //return result;
+    }
+
     // decode base58 asset id
     char asset_id_bytes[32] = {};
     size_t asset_id_bytes_sz = sizeof(asset_id_bytes);
@@ -566,6 +586,16 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     {
         debug_print("lzap_transaction_create: failed to decode asset id\n");
         return result;
+    }
+
+    // check base58 asset id
+    b58_sha256_impl = zap_sha256;
+    b58chk = b58check(asset_id_bytes, asset_id_bytes_sz, network_assetid());
+    if (b58chk < 0)
+    {
+        debug_print("lzap_transaction_create: error checking base58 decoded recipient (%d)\n", b58chk);
+        //TODO: fixx!!!
+        //return result;
     }
 
     // create structure
@@ -648,6 +678,7 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx)
         debug_print("lzap_transaction_broadcast: failed to parse tx data\n");
         goto cleanup;
     }
+
     TransferTransactionsData ttx_data;
     if (!waves_read_transfer_transaction_data(&ttx_bytes, g_network, &ttx_data))
     {

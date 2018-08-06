@@ -4,7 +4,7 @@ add_subdirectory(../src build)
 
 project(test_libzap)
 
-set(SOURCE test.c)
+set(SOURCE test.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCE})
 target_link_libraries(${PROJECT_NAME} zap waves_c)

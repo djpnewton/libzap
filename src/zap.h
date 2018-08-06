@@ -39,7 +39,7 @@ extern "C" {
     int lzap_version();
     void lzap_network_set(char network_byte);
     bool lzap_mnemonic_create(char *output, size_t size);
-    bool lzap_mnemonic_check(char *mnemonic);
+    bool lzap_mnemonic_check(const char *mnemonic);
     void lzap_seed_to_address(const char *seed, char *output);
     struct int_result_t lzap_address_balance(const char *address);
     struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count);
