@@ -551,18 +551,18 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     waves_seed_to_privkey(seed, privkey, pubkey); 
 
     // decode base58 recipient
-    char recipient_raw[32] = {};
-    size_t recipient_raw_sz = 32;
-    if (!b58tobin(recipient_raw, &recipient_raw_sz, recipient, 0))
+    char recipient_bytes[26] = {};
+    size_t recipient_bytes_sz = sizeof(recipient_bytes);
+    if (!b58tobin(recipient_bytes, &recipient_bytes_sz, recipient, 0))
     {
         debug_print("lzap_transaction_create: failed to decode recipient\n");
         return result;
     }
 
     // decode base58 asset id
-    char asset_id_raw[1024] = {};
-    size_t asset_id_raw_sz = 1024;
-    if (!b58tobin(asset_id_raw, &asset_id_raw_sz, network_assetid(), 0))
+    char asset_id_bytes[32] = {};
+    size_t asset_id_bytes_sz = sizeof(asset_id_bytes);
+    if (!b58tobin(asset_id_bytes, &asset_id_bytes_sz, network_assetid(), 0))
     {
         debug_print("lzap_transaction_create: failed to decode asset id\n");
         return result;
@@ -574,21 +574,26 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     memcpy(tx.sender_public_key, pubkey, sizeof(pubkey));
     tx.amount_asset_flag = 1;
     memset(tx.amount_asset_id, 0, sizeof(tx.amount_asset_id));
-    memcpy(tx.amount_asset_id, asset_id_raw, asset_id_raw_sz);
+    memcpy(tx.amount_asset_id, asset_id_bytes, asset_id_bytes_sz);
     tx.fee_asset_flag = 1;
     memset(tx.fee_asset_id, 0, sizeof(tx.fee_asset_id));
-    memcpy(tx.fee_asset_id, asset_id_raw, asset_id_raw_sz);
-    tx.timestamp = time(NULL);
+    memcpy(tx.fee_asset_id, asset_id_bytes, asset_id_bytes_sz);
+    tx.timestamp = time(NULL) * 1000;
     tx.amount = amount;
     tx.fee = fee;
     memset(tx.recipient_address_or_alias, 0, sizeof(tx.recipient_address_or_alias));
-    memcpy(tx.recipient_address_or_alias, recipient_raw, recipient_raw_sz);
-    tx.attachment_length = strlen(attachment);
+    memcpy(tx.recipient_address_or_alias, recipient_bytes, recipient_bytes_sz);
     memset(tx.attachment, 0, sizeof(tx.attachment));
-    size_t sz = strlen(attachment);
-    if (sz > sizeof(tx.attachment))
-        sz = sizeof(tx.attachment);
-    memcpy(tx.attachment, attachment, sz);
+    if (!attachment)
+        tx.attachment_length = 0;
+    else
+    {
+        tx.attachment_length = strlen(attachment);
+        size_t sz = strlen(attachment);
+        if (sz > sizeof(tx.attachment))
+            sz = sizeof(tx.attachment);
+        memcpy(tx.attachment, attachment, sz);
+    }
 
     // convert to byte array
     if (!waves_transfer_transaction_to_bytes(&tx, result.tx_bytes, &result.tx_bytes_size, 0))
@@ -643,24 +648,15 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx)
         debug_print("lzap_transaction_broadcast: failed to parse tx data\n");
         goto cleanup;
     }
-    char asset_id_b58[45];
-    char sender_public_key_b58[45];
-    char recipient_b58[45];
-    char fee_asset_id_b58[45];
-    char attachment_b58[192];
-    char signature_b58[128];
-#define b58_enc(name, target, source)                   \
-    {                                                   \
-        long tmp = sizeof(target);                      \
-        b58enc(target, &tmp, source, sizeof(source));   \
-        printf("%s: %s - %s\n", name, target, source); \
+    TransferTransactionsData ttx_data;
+    if (!waves_read_transfer_transaction_data(&ttx_bytes, g_network, &ttx_data))
+    {
+        debug_print("lzap_transaction_broadcast: failed to convert tx bytes\n");
+        goto cleanup;
     }
-    b58_enc("asset_id", asset_id_b58, ttx_bytes.amount_asset_id);
-    b58_enc("sender_public_key", sender_public_key_b58, ttx_bytes.sender_public_key);
-    b58_enc("recipient", recipient_b58, ttx_bytes.recipient_address_or_alias);
-    b58_enc("fee_asset_id", fee_asset_id_b58, ttx_bytes.fee_asset_id);
-    b58_enc("attachment", attachment_b58, ttx_bytes.attachment);
-    b58_enc("signature", signature_b58, spend_tx.signature);
+    char signature_b58[128];
+    size_t tmp = sizeof(signature_b58);
+    b58enc(signature_b58, &tmp, spend_tx.signature, sizeof(spend_tx.signature));
 
     // now create the json
     root = json_object();
@@ -669,21 +665,21 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx)
         debug_print("lzap_transaction_broadcast: failed to create root json object\n");
         goto cleanup;
     }
-    if (!json_set_string(root, "assetId", asset_id_b58))
+    if (!json_set_string(root, "assetId", ttx_data.amount_asset_id))
         goto cleanup;
-    if (!json_set_string(root, "senderPublicKey", sender_public_key_b58))
+    if (!json_set_string(root, "senderPublicKey", ttx_data.sender_public_key))
         goto cleanup;
-    if (!json_set_string(root, "recipient", recipient_b58))
+    if (!json_set_string(root, "recipient", ttx_data.recipient_address_or_alias))
         goto cleanup;
-    if (!json_set_int(root, "fee", ttx_bytes.fee))
+    if (!json_set_int(root, "fee", ttx_data.fee))
         goto cleanup;
-    if (!json_set_string(root, "feeAssetId", fee_asset_id_b58))
+    if (!json_set_string(root, "feeAssetId", ttx_data.fee_asset_id))
         goto cleanup;
-    if (!json_set_int(root, "amount", ttx_bytes.amount))
+    if (!json_set_int(root, "amount", ttx_data.amount))
         goto cleanup;
-    if (!json_set_string(root, "attachment", attachment_b58))
+    if (!json_set_string(root, "attachment", ttx_data.attachment))
         goto cleanup;
-    if (!json_set_int(root, "timestamp", ttx_bytes.timestamp))
+    if (!json_set_int(root, "timestamp", ttx_data.timestamp))
         goto cleanup;
     debug_print("%s\n", spend_tx.signature);
     if (!json_set_string(root, "signature", signature_b58))
@@ -706,4 +702,10 @@ cleanup:
     if (json_data)
         free(json_data);
     return result;
+}
+
+bool lzap_b58_enc(void *src, size_t src_sz, char *dst, size_t dst_sz)
+{
+    memset(dst, 0, dst_sz);
+    return b58enc(dst, &dst_sz, src, src_sz);
 }

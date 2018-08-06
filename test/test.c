@@ -4,6 +4,12 @@
 
 #include "../src/zap.h"
 
+void print_hex(unsigned char *buf, size_t sz)
+{
+    for (int i = 0; i < sz; i++)
+        printf("%02x", buf[i]);
+}
+
 int main()
 {
     // version
@@ -49,7 +55,9 @@ int main()
     assert(fee.success);
     printf("transaction fee: %lu\n", fee.value);
     struct spend_tx_t tx = lzap_transaction_create(mnemonic, address, 100, fee.value, "blah blah");
-    printf("transaction create:\n\tsuccess: %d\n\tbytes: %s\n\tlength: %lu\n\tsignature: %s\n", tx.success, tx.tx_bytes, tx.tx_bytes_size, tx.signature);
+    printf("transaction create:\n\tsuccess: %d\n\tbytes: %s\n\tlength: %lu\n\tsignature: ", tx.success, tx.tx_bytes, tx.tx_bytes_size);
+    print_hex(tx.signature, sizeof(tx.signature));
+    printf("\n");
 
     // broadcast tx
     printf("transaction broadcast: %d\n", lzap_transaction_broadcast(tx));
