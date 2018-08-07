@@ -65,19 +65,19 @@ char g_network = 'T';
 
 void check_network()
 {
-    assert(g_network != 'T' || g_network != 'M');
+    assert(g_network != 'T' || g_network != 'W');
 }
 
 const char* network_host()
 {
-    if (g_network == 'M')
+    if (g_network == 'W')
         return MAINNET_HOST;
     return TESTNET_HOST;
 }
 
 const char* network_assetid()
 {
-    if (g_network == 'M')
+    if (g_network == 'W')
         return MAINNET_ASSETID;
     return TESTNET_ASSETID;
 }
