@@ -19,7 +19,7 @@
 
 #include "libbase58.h"
 
-bool (*b58_sha256_impl)(void *, const void *, size_t) = NULL;
+bool (*b58_securehash_impl)(void *, const void *, size_t) = NULL;
 
 static const int8_t b58digits_map[] = {
 	-1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
@@ -113,10 +113,9 @@ bool b58tobin(void *bin, size_t *binszp, const char *b58, size_t b58sz)
 }
 
 static
-bool my_dblsha256(void *hash, const void *data, size_t datasz)
+bool my_securehash(void *hash, const void *data, size_t datasz)
 {
-	uint8_t buf[0x20];
-	return b58_sha256_impl(buf, data, datasz) && b58_sha256_impl(hash, buf, sizeof(buf));
+	return b58_securehash_impl(hash, data, datasz);
 }
 
 int b58check(const void *bin, size_t binsz, const char *base58str)
@@ -126,7 +125,7 @@ int b58check(const void *bin, size_t binsz, const char *base58str)
 	unsigned i;
 	if (binsz < 4)
 		return -4;
-	if (!my_dblsha256(buf, bin, binsz - 4))
+	if (!my_securehash(buf, bin, binsz - 4))
 		return -2;
 	if (memcmp(&binc[binsz - 4], buf, 4))
 		return -1;
@@ -191,7 +190,7 @@ bool b58check_enc(char *b58c, size_t *b58c_sz, uint8_t ver, const void *data, si
 	
 	buf[0] = ver;
 	memcpy(&buf[1], data, datasz);
-	if (!my_dblsha256(hash, buf, datasz + 1))
+	if (!my_securehash(hash, buf, datasz + 1))
 	{
 		*b58c_sz = 0;
 		return false;

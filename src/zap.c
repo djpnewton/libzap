@@ -11,7 +11,6 @@
 #include "../waves-c/src/crypto/waves_crypto.h"
 #include "../waves-c/src/crypto/base58/libbase58.h"
 #include "../waves-c/src/crypto/transactions/transfer_transaction.h"
-#include "../waves-c/src/crypto/sha256.h"
 #include "../trezor-crypto/bip39.h"
 #include "zap.h"
 
@@ -260,12 +259,9 @@ void print_json_error(const char *function, json_error_t *error)
     debug_print("%s: %s - source: %s\n", function, error->text, error->source);
 }
 
-bool zap_sha256(void *digest, const void *data, size_t datasz)
+bool zap_securehash(void *digest, const void *data, size_t datasz)
 {
-    SHA256_CTX ctx;
-    sha256_init(&ctx);
-    sha256_update(&ctx, data, datasz);
-    sha256_final(&ctx, digest);
+    waves_secure_hash(data, datasz, digest);
     return true;
 }
 
@@ -570,13 +566,12 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     }
 
     // check base58 recipient
-    b58_sha256_impl = zap_sha256;
+    b58_securehash_impl = zap_securehash;
     int b58chk = b58check(recipient_bytes, recipient_bytes_sz, recipient);
     if (b58chk < 0)
     {
         debug_print("lzap_transaction_create: error checking base58 decoded recipient (%d)\n", b58chk);
-        //TODO: fixx!!!
-        //return result;
+        return result;
     }
 
     // decode base58 asset id
@@ -586,16 +581,6 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     {
         debug_print("lzap_transaction_create: failed to decode asset id\n");
         return result;
-    }
-
-    // check base58 asset id
-    b58_sha256_impl = zap_sha256;
-    b58chk = b58check(asset_id_bytes, asset_id_bytes_sz, network_assetid());
-    if (b58chk < 0)
-    {
-        debug_print("lzap_transaction_create: error checking base58 decoded recipient (%d)\n", b58chk);
-        //TODO: fixx!!!
-        //return result;
     }
 
     // create structure
