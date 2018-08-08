@@ -547,6 +547,8 @@ cleanup:
 
 struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, long amount, long fee, const char *attachment)
 {
+    debug_print("lzap_transaction_create: seed: %s, recipient: %s, amount: %ld, fee: %ld, attachment: %s\n", seed, recipient, amount, fee, attachment);
+
     check_network();
 
     struct spend_tx_t result = {};
