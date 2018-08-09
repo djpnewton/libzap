@@ -9,5 +9,12 @@ target_link_libraries(waves_c ${OPENSSL_LIBRARIES} m)
 add_definitions(-Wall -O3 -Wextra -Wno-format -fPIC)
 
 add_executable( waves_vanity vanity.c )
-target_link_libraries(waves_vanity pthread waves_c)
+
+if (ANDROID)
+    set(PTHREAD_LIB)
+else()
+    set(PTHREAD_LIB pthread)
+endif()
+
+target_link_libraries(waves_vanity ${PTHREAD_LIB} waves_c)
 install(TARGETS waves_vanity DESTINATION bin)

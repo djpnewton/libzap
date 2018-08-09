@@ -2,7 +2,11 @@
 
 set -e
 
-NDK=/usr/lib/android-ndk
+if [[ -z "${ANDROID_NDK}" ]]; then
+  NDK=/usr/lib/android-ndk
+else
+  NDK=$ANDROID_NDK
+fi
 MAKE=make
 CMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake
 ANDROID_ABI=armeabi-v7a

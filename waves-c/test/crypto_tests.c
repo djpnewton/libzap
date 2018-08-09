@@ -1,6 +1,5 @@
 #include "crypto_tests.h"
 #include <waves_crypto.h>
-#include <printf.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <libbase58.h>
