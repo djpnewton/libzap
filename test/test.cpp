@@ -47,8 +47,8 @@ int main(int argc, char *argv[])
     args::ValueFlag<std::string> recipient_opt(create, "recipient", "recipient to send to", {'r'});
     args::ValueFlag<std::string> attachment_opt(create, "attachment", "attachment for tx", {'A'});
     args::Command broadcast(commands, "broadcast", "broadcast spend transaction");
-    args::ValueFlag<std::string> tx_data_opt(broadcast, "txdata", "transaction data (hex string - no leading '0x')", {'t'});
-    args::ValueFlag<std::string> sig_data_opt(broadcast, "sigdata", "signature data (hex string - no leading '0x')", {'s'});
+    args::ValueFlag<std::string> tx_data_opt(broadcast, "data", "transaction data (hex string - no leading '0x')", {'d'});
+    args::ValueFlag<std::string> sig_data_opt(broadcast, "signature", "signature data (hex string - no leading '0x')", {'s'});
 
     args::Group arguments(p, "arguments", args::Group::Validators::DontCare, args::Options::Global);
     args::ValueFlag<char> network(arguments, "network", "Mainnet or testnet (default 'T')", {'n'});
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
             // address balance
             auto address = args::get(address_opt).c_str();
             struct int_result_t result = lzap_address_balance(address);
-            printf("address balance success: %d\naddress balance value: %ld\n", result.success, result.value);
+            printf("address balance success: %d\naddress balance value: %lld\n", result.success, result.value);
         }
         else if (transactions)
         {
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
                         i, txs[i].id, txs[i].sender, txs[i].recipient);
                     printf("    asset id: %s\n    fee asset: %s\n    attachment: %s\n",
                         txs[i].asset_id, txs[i].fee_asset, txs[i].attachment);
-                    printf("    amount: %ld\n    fee: %ld\n    timestamp: %ld\n",
+                    printf("    amount: %lld\n    fee: %lld\n    timestamp: %lld\n",
                         txs[i].amount, txs[i].fee, txs[i].timestamp);
                 }
         }
@@ -124,10 +124,10 @@ int main(int argc, char *argv[])
 
             struct int_result_t fee = lzap_transaction_fee();
             assert(fee.success);
-            printf("transaction fee: %lu\n", fee.value);
+            printf("transaction fee: %llu\n", fee.value);
             struct spend_tx_t tx = lzap_transaction_create(seed, recipient, amount, fee.value, attachment);
-            printf("transaction create:\n\tsuccess:   %d\n\tbytes:     ", tx.success);
-            print_hex((unsigned char*)tx.tx_bytes, tx.tx_bytes_size);
+            printf("transaction create:\n\tsuccess:   %d\n\tdata:      ", tx.success);
+            print_hex((unsigned char*)tx.tx_data, tx.tx_data_size);
             printf("\n\tsignature: ");
             print_hex((unsigned char*)tx.signature, sizeof(tx.signature));
             printf("\n");
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
             std::vector<unsigned char> tx_data = hex_str_to_vec(tx_data_hex);
             std::vector<unsigned char> sig_data = hex_str_to_vec(sig_data_hex);
             struct spend_tx_t tx = {};
-            memcpy(&tx.tx_bytes, &tx_data[0], tx_data.size());
+            memcpy(&tx.tx_data, &tx_data[0], tx_data.size());
             memcpy(&tx.signature, &sig_data[0], sig_data.size());
             printf("transaction broadcast: %d\n", lzap_transaction_broadcast(tx));
         }
