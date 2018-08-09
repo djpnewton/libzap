@@ -7,9 +7,9 @@ public final class SpendTx {
     public byte[] Signature;
 
     public SpendTx(boolean success, byte[] txData, byte[] signature) {
-        this.Success = Success;
+        this.Success = success;
         this.TxData = txData;
-        this.Signature = Signature;
+        this.Signature = signature;
     }
 
     @Override

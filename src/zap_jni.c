@@ -32,11 +32,59 @@ jobject create_jni_spend_tx(JNIEnv *env, struct spend_tx_t spendtx)
 {
     jclass cls = (*env)->FindClass(env, "com/djpsoft/zap/plugin/SpendTx");
     jmethodID constructor = (*env)->GetMethodID(env, cls, "<init>", "(Z[B[B)V");
-    jbyteArray txdata = (*env)->NewByteArray(env, spendtx.tx_bytes_size);
-    (*env)->SetByteArrayRegion(env, txdata, 0, spendtx.tx_bytes_size, spendtx.tx_bytes);
+    jbyteArray txdata = (*env)->NewByteArray(env, spendtx.tx_data_size);
+    (*env)->SetByteArrayRegion(env, txdata, 0, spendtx.tx_data_size, spendtx.tx_data);
     jbyteArray signature = (*env)->NewByteArray(env, sizeof(spendtx.signature));
     (*env)->SetByteArrayRegion(env, signature, 0, sizeof(spendtx.signature), spendtx.signature);
-    return (*env)->NewObject(env, cls, constructor, spendtx.success, txdata, signature);
+    jobject obj = (*env)->NewObject(env, cls, constructor, spendtx.success, txdata, signature);
+    return obj;
+}
+
+bool extract_jni_spend_tx(JNIEnv *env, jobject spend_tx, struct spend_tx_t *spend_tx_native)
+{
+    jclass cls = (*env)->FindClass(env, "com/djpsoft/zap/plugin/SpendTx");
+    // get txdata info
+    jfieldID fieldid = (*env)->GetFieldID(env, cls, "TxData", "[B");
+    jbyteArray *txdata = NULL;
+    if (fieldid == 0)
+    {
+        debug_print("failed to find txdata field :(");
+        return false;
+    }
+    jobject arr = (*env)->GetObjectField(env, spend_tx, fieldid);
+    txdata = (jbyteArray*)(&arr);
+    jbyte *c_txdata = (*env)->GetByteArrayElements(env, *txdata, NULL);
+    jsize txdata_sz = (*env)->GetArrayLength(env, *txdata);
+    if (c_txdata)
+    {
+        // copy data
+        if (txdata_sz > sizeof(spend_tx_native->tx_data))
+            txdata_sz = sizeof(spend_tx_native->tx_data);
+        memcpy(spend_tx_native->tx_data, c_txdata, txdata_sz);  
+        spend_tx_native->tx_data_size = txdata_sz;
+        (*env)->ReleaseByteArrayElements(env, *txdata, c_txdata, JNI_ABORT);
+    }
+    // get signature info
+    fieldid = (*env)->GetFieldID(env, cls, "Signature", "[B");
+    jbyteArray *signature = NULL;
+    if (fieldid == 0)
+    {
+        debug_print("failed to find signature field :(");
+        return false;
+    }
+    arr = (*env)->GetObjectField(env, spend_tx, fieldid);
+    signature = (jbyteArray*)(&arr);
+    jbyte *c_signature = (*env)->GetByteArrayElements(env, *signature, NULL);
+    jsize signature_sz = (*env)->GetArrayLength(env, *signature);
+    if (c_signature)
+    {
+        // copy data
+        if (signature_sz > sizeof(spend_tx_native->signature))
+            signature_sz = sizeof(spend_tx_native->signature);
+        memcpy(spend_tx_native->signature, c_signature, signature_sz);  
+        (*env)->ReleaseByteArrayElements(env, *signature, c_signature, JNI_ABORT);
+    }
+    return true;
 }
 
 bool set_jni_object_str(JNIEnv *env, jobject obj, char *name, char *val)
@@ -63,7 +111,7 @@ bool set_jni_object_str(JNIEnv *env, jobject obj, char *name, char *val)
     return true;
 }
 
-bool set_jni_object_long(JNIEnv *env, jobject obj, char *name, int val)
+bool set_jni_object_long(JNIEnv *env, jobject obj, char *name, long long val)
 {
     jclass cls = (*env)->GetObjectClass(env, obj);
     if (!cls)
@@ -129,7 +177,7 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1balance(
     // get result
     struct int_result_t balance = lzap_address_balance(c_address);
     // create java class to return result
-    debug_print("address_balance: %s, %d, %ld", c_address, balance.success, balance.value);
+    debug_print("address_balance: %s, %d, %lld", c_address, balance.success, balance.value);
     return create_jni_int_result(env, balance);
 }
 
@@ -146,7 +194,7 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1transact
         result = lzap_address_transactions(c_address, c_txs, count);
         if (result.success)
         {
-            debug_print("got address transactions: %ld", result.value);
+            debug_print("got address transactions: %lld", result.value);
             // first we need to populate jni txs
             result.success = false;
             // populate jni txs
@@ -182,7 +230,6 @@ cleanup:
     if (c_txs)
         free(c_txs);
     // create java class to return result
-    debug_print("returning address transactions: %d, %ld", result.success, result.value);
     return create_jni_int_result(env, result);
 }
 
@@ -196,7 +243,7 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1fee(
 }
 
 JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1create(
-    JNIEnv* env, jobject thiz, jstring seed, jstring recipient, jint amount, jstring attachment)
+    JNIEnv* env, jobject thiz, jstring seed, jstring recipient, jlong amount, jstring attachment)
 {
     struct spend_tx_t spend_tx = {};
     // get fee
@@ -223,23 +270,13 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1crea
 }
 
 JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1broadcast(
-    JNIEnv* env, jobject thiz, jbyteArray txdata, jbyteArray signature)
+    JNIEnv* env, jobject thiz, jobject spend_tx, jbyteArray txdata, jbyteArray signature)
 {
     // create c compatible structures
-    jbyte *c_txdata = (*env)->GetByteArrayElements(env, txdata, NULL);
-    jsize txdata_sz = (*env)->GetArrayLength(env, txdata);
-    jbyte *c_signature = (*env)->GetByteArrayElements(env, signature, NULL);
-    jsize signature_sz = (*env)->GetArrayLength(env, txdata);
-    struct spend_tx_t spend_tx = {};
-
-    if (txdata_sz > sizeof(spend_tx.tx_bytes))
-        txdata_sz = sizeof(spend_tx.tx_bytes);
-    memcpy(spend_tx.tx_bytes, c_txdata, txdata_sz);  
-    spend_tx.tx_bytes_size = txdata_sz;
-    if (signature_sz > sizeof(spend_tx.signature))
-        signature_sz = sizeof(spend_tx.signature);
-    memcpy(spend_tx.signature, c_signature, signature_sz);  
+    struct spend_tx_t spend_tx_native = {};
+    if (!extract_jni_spend_tx(env, spend_tx, &spend_tx_native))
+        return false;
     // get result
-    return lzap_transaction_broadcast(spend_tx);
+    return lzap_transaction_broadcast(spend_tx_native);
 }
 

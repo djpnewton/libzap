@@ -203,6 +203,8 @@ bool post_url(const char *url, const char *post_data)
         return false;
     }
 #endif
+    // init data
+    struct curl_data_t data = {};
     // use curl to request
     CURL* curl = curl_easy_init();
     if (curl)
@@ -210,6 +212,8 @@ bool post_url(const char *url, const char *post_data)
         struct curl_slist *headers = NULL;
         CURLcode res;
         curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_data);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
         headers = curl_slist_append(headers, "Content-Type: application/json");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
@@ -229,6 +233,7 @@ bool post_url(const char *url, const char *post_data)
                 return true;
             }
             debug_print("post_url: response_code (%ld, %s)\n", response_code, url);
+            debug_print("post_url: data: %s\n", data.ptr);
         }
         debug_print("post_url: curl code (%u, %s)\n", res, url);
         curl_easy_cleanup(curl);
@@ -330,7 +335,7 @@ bool get_json_string(json_t *string_field, char *target, int max)
     return true;
 }
 
-bool get_json_int(json_t *int_field, long *target)
+bool get_json_int(json_t *int_field, long long *target)
 {
     if (!json_is_integer(int_field))
     {
@@ -347,7 +352,7 @@ bool get_json_string_from_object(json_t *object, const char *field_name, char *t
     return get_json_string(field, target, max);
 }
 
-bool get_json_int_from_object(json_t *object, const char *field_name, long *target)
+bool get_json_int64_from_object(json_t *object, const char *field_name, long long *target)
 {
     json_t *field = json_object_get(object, field_name);
     return get_json_int(field, target);
@@ -379,7 +384,7 @@ struct int_result_t lzap_address_balance(const char *address)
             debug_print("lzap_address_balance: json root is not an object\n");
             goto cleanup;
         }
-        if (!get_json_int_from_object(root, "balance", &balance.value))
+        if (!get_json_int64_from_object(root, "balance", &balance.value))
         {
             debug_print("lzap_address_balance: failed to get balance\n");
             goto cleanup;
@@ -467,17 +472,17 @@ struct int_result_t lzap_address_transactions(const char *address, struct tx_t *
                 debug_print("lzap_address_transactions: failed to get tx attachment\n");
                 goto cleanup;
             }
-            if (!get_json_int_from_object(tx_object, "amount", &txs[i].amount))
+            if (!get_json_int64_from_object(tx_object, "amount", &txs[i].amount))
             {
                 debug_print("lzap_address_transactions: failed to get tx amount\n");
                 goto cleanup;
             }
-            if (!get_json_int_from_object(tx_object, "fee", &txs[i].fee))
+            if (!get_json_int64_from_object(tx_object, "fee", &txs[i].fee))
             {
                 debug_print("lzap_address_transactions: failed to get tx fee\n");
                 goto cleanup;
             }
-            if (!get_json_int_from_object(tx_object, "timestamp", &txs[i].timestamp))
+            if (!get_json_int64_from_object(tx_object, "timestamp", &txs[i].timestamp))
             {
                 debug_print("lzap_address_transactions: failed to get tx timestamp\n");
                 goto cleanup;
@@ -520,14 +525,14 @@ struct int_result_t lzap_transaction_fee()
             debug_print("lzap_transaction_fee: json root is not an object\n");
             goto cleanup;
         }
-        long min_asset_fee;
-        if (!get_json_int_from_object(root, "minSponsoredAssetFee", &min_asset_fee))
+        long long min_asset_fee;
+        if (!get_json_int64_from_object(root, "minSponsoredAssetFee", &min_asset_fee))
         {
             debug_print("lzap_transaction_fee: failed to get min sponsored asset fee\n");
             goto cleanup;
         }
-        long decimals;
-        if (!get_json_int_from_object(root, "decimals", &decimals))
+        long long decimals;
+        if (!get_json_int64_from_object(root, "decimals", &decimals))
         {
             debug_print("lzap_transaction_fee: failed to get decimals\n");
             goto cleanup;
@@ -545,10 +550,8 @@ cleanup:
 
 }
 
-struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, long amount, long fee, const char *attachment)
+struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment)
 {
-    debug_print("lzap_transaction_create: seed: %s, recipient: %s, amount: %ld, fee: %ld, attachment: %s\n", seed, recipient, amount, fee, attachment);
-
     check_network();
 
     struct spend_tx_t result = {};
@@ -595,7 +598,7 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     tx.fee_asset_flag = 1;
     memset(tx.fee_asset_id, 0, sizeof(tx.fee_asset_id));
     memcpy(tx.fee_asset_id, asset_id_bytes, asset_id_bytes_sz);
-    tx.timestamp = time(NULL) * 1000;
+    tx.timestamp = ((long long)time(NULL)) * 1000;
     tx.amount = amount;
     tx.fee = fee;
     memset(tx.recipient_address_or_alias, 0, sizeof(tx.recipient_address_or_alias));
@@ -613,14 +616,14 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     }
 
     // convert to byte array
-    if (!waves_transfer_transaction_to_bytes(&tx, result.tx_bytes, &result.tx_bytes_size, 0))
+    if (!waves_transfer_transaction_to_bytes(&tx, result.tx_data, &result.tx_data_size, 0))
     {
         debug_print("lzap_transaction_create: failed to convert to bytes\n");
         return result;
     }
 
     // sign tx
-    if (!waves_message_sign(&privkey, result.tx_bytes, result.tx_bytes_size, result.signature))
+    if (!waves_message_sign(&privkey, result.tx_data, result.tx_data_size, result.signature))
     {
         debug_print("lzap_transaction_create: failed to create signature\n");
         return result;
@@ -640,11 +643,11 @@ bool json_set_string(json_t *object, char *field, char *value)
     return true;
 }
 
-bool json_set_int(json_t *object, char *field, long value)
+bool json_set_int64(json_t *object, char *field, long long value)
 {
     if (json_object_set_new(object, field, json_integer(value)) == -1)
     {
-        debug_print("json_set_int: failed to set json field '%s'\n", field);
+        debug_print("json_set_int64: failed to set json field '%s'\n", field);
         return false;
     }
     return true;
@@ -660,7 +663,7 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx)
 
     // first parse the transaction and encode the strings to base58
     TransferTransactionsBytes ttx_bytes;
-    if (!waves_parse_transfer_transaction(spend_tx.tx_bytes, 0, &ttx_bytes))
+    if (!waves_parse_transfer_transaction(spend_tx.tx_data, 0, &ttx_bytes))
     {
         debug_print("lzap_transaction_broadcast: failed to parse tx data\n");
         goto cleanup;
@@ -689,17 +692,16 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx)
         goto cleanup;
     if (!json_set_string(root, "recipient", ttx_data.recipient_address_or_alias))
         goto cleanup;
-    if (!json_set_int(root, "fee", ttx_data.fee))
+    if (!json_set_int64(root, "fee", ttx_data.fee))
         goto cleanup;
     if (!json_set_string(root, "feeAssetId", ttx_data.fee_asset_id))
         goto cleanup;
-    if (!json_set_int(root, "amount", ttx_data.amount))
+    if (!json_set_int64(root, "amount", ttx_data.amount))
         goto cleanup;
     if (!json_set_string(root, "attachment", ttx_data.attachment))
         goto cleanup;
-    if (!json_set_int(root, "timestamp", ttx_data.timestamp))
+    if (!json_set_int64(root, "timestamp", ttx_data.timestamp))
         goto cleanup;
-    debug_print("%s\n", spend_tx.signature);
     if (!json_set_string(root, "signature", signature_b58))
         goto cleanup;
     json_data = json_dumps(root, 0);
