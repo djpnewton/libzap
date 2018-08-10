@@ -1,3 +1,7 @@
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "utils_tests.h"
 #include "utils.h"
 
