@@ -3,12 +3,12 @@ package com.djpsoft.zap.plugin;
 public final class SpendTx {
 
     public boolean Success;
-    public byte[] TxData;
+    public byte[] Data;
     public byte[] Signature;
 
-    public SpendTx(boolean success, byte[] txData, byte[] signature) {
+    public SpendTx(boolean success, byte[] Data, byte[] signature) {
         this.Success = success;
-        this.TxData = txData;
+        this.Data = Data;
         this.Signature = signature;
     }
 

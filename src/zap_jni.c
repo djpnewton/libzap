@@ -1,5 +1,6 @@
 #include <jni.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "zap.h"
 
@@ -32,37 +33,37 @@ jobject create_jni_spend_tx(JNIEnv *env, struct spend_tx_t spendtx)
 {
     jclass cls = (*env)->FindClass(env, "com/djpsoft/zap/plugin/SpendTx");
     jmethodID constructor = (*env)->GetMethodID(env, cls, "<init>", "(Z[B[B)V");
-    jbyteArray txdata = (*env)->NewByteArray(env, spendtx.tx_data_size);
-    (*env)->SetByteArrayRegion(env, txdata, 0, spendtx.tx_data_size, spendtx.tx_data);
+    jbyteArray data = (*env)->NewByteArray(env, spendtx.data_size);
+    (*env)->SetByteArrayRegion(env, data, 0, spendtx.data_size, spendtx.data);
     jbyteArray signature = (*env)->NewByteArray(env, sizeof(spendtx.signature));
     (*env)->SetByteArrayRegion(env, signature, 0, sizeof(spendtx.signature), spendtx.signature);
-    jobject obj = (*env)->NewObject(env, cls, constructor, spendtx.success, txdata, signature);
+    jobject obj = (*env)->NewObject(env, cls, constructor, spendtx.success, data, signature);
     return obj;
 }
 
 bool extract_jni_spend_tx(JNIEnv *env, jobject spend_tx, struct spend_tx_t *spend_tx_native)
 {
     jclass cls = (*env)->FindClass(env, "com/djpsoft/zap/plugin/SpendTx");
-    // get txdata info
-    jfieldID fieldid = (*env)->GetFieldID(env, cls, "TxData", "[B");
-    jbyteArray *txdata = NULL;
+    // get data
+    jfieldID fieldid = (*env)->GetFieldID(env, cls, "Data", "[B");
+    jbyteArray *data = NULL;
     if (fieldid == 0)
     {
-        debug_print("failed to find txdata field :(");
+        debug_print("failed to find data field :(");
         return false;
     }
     jobject arr = (*env)->GetObjectField(env, spend_tx, fieldid);
-    txdata = (jbyteArray*)(&arr);
-    jbyte *c_txdata = (*env)->GetByteArrayElements(env, *txdata, NULL);
-    jsize txdata_sz = (*env)->GetArrayLength(env, *txdata);
-    if (c_txdata)
+    data = (jbyteArray*)(&arr);
+    jbyte *c_data = (*env)->GetByteArrayElements(env, *data, NULL);
+    jsize data_sz = (*env)->GetArrayLength(env, *data);
+    if (c_data)
     {
         // copy data
-        if (txdata_sz > sizeof(spend_tx_native->tx_data))
-            txdata_sz = sizeof(spend_tx_native->tx_data);
-        memcpy(spend_tx_native->tx_data, c_txdata, txdata_sz);  
-        spend_tx_native->tx_data_size = txdata_sz;
-        (*env)->ReleaseByteArrayElements(env, *txdata, c_txdata, JNI_ABORT);
+        if (data_sz > sizeof(spend_tx_native->data))
+            data_sz = sizeof(spend_tx_native->data);
+        memcpy(spend_tx_native->data, c_data, data_sz);  
+        spend_tx_native->data_size = data_sz;
+        (*env)->ReleaseByteArrayElements(env, *data, c_data, JNI_ABORT);
     }
     // get signature info
     fieldid = (*env)->GetFieldID(env, cls, "Signature", "[B");
@@ -160,12 +161,12 @@ JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1check(
     return lzap_mnemonic_check(c_mnemonic);
 }
 
-JNIEXPORT jstring JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_seed_1to_1address(
+JNIEXPORT jstring JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_seed_1address(
     JNIEnv* env, jobject thiz, jstring seed)
 {
     const char *c_seed = (*env)->GetStringUTFChars(env, seed, 0);
     char output[1024];
-    lzap_seed_to_address(c_seed, output);
+    lzap_seed_address(c_seed, output);
     return (*env)->NewStringUTF(env, output);
 }
 
@@ -243,16 +244,9 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1fee(
 }
 
 JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1create(
-    JNIEnv* env, jobject thiz, jstring seed, jstring recipient, jlong amount, jstring attachment)
+    JNIEnv* env, jobject thiz, jstring seed, jstring recipient, jlong amount, jlong fee, jstring attachment)
 {
     struct spend_tx_t spend_tx = {};
-    // get fee
-    struct int_result_t fee = lzap_transaction_fee();
-    if (!fee.success)
-    {
-        debug_print("unable to get fee");
-        return create_jni_spend_tx(env, spend_tx);
-    }
     // create c compatible structures
     if (!seed || !recipient)
     {
@@ -265,12 +259,12 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1crea
     if (attachment)
         c_attachment = (*env)->GetStringUTFChars(env, attachment, 0);
     // get result
-    spend_tx = lzap_transaction_create(c_seed, c_recipient, amount, fee.value, c_attachment);
+    spend_tx = lzap_transaction_create(c_seed, c_recipient, amount, fee, c_attachment);
     return create_jni_spend_tx(env, spend_tx);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1broadcast(
-    JNIEnv* env, jobject thiz, jobject spend_tx, jbyteArray txdata, jbyteArray signature)
+    JNIEnv* env, jobject thiz, jobject spend_tx)
 {
     // create c compatible structures
     struct spend_tx_t spend_tx_native = {};

@@ -20,10 +20,10 @@ public class zap_jni {
     public static native void network_set(char network_byte);
     public static native String mnemonic_create();
     public static native int mnemonic_check(String mnemonic);
-    public static native String seed_to_address(String seed);
+    public static native String seed_address(String seed);
     public static native IntResult address_balance(String address);
     public static native IntResult address_transactions(String address, Tx[] txs, int count);
     public static native IntResult transaction_fee();
-    public static native SpendTx transaction_create(String seed, String recipient, long amount, String attachment);
+    public static native SpendTx transaction_create(String seed, String recipient, long amount, long fee, String attachment);
     public static native int transaction_broadcast(SpendTx spend_tx);
 }

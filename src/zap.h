@@ -24,13 +24,13 @@ struct tx_t
     uint64_t timestamp;
 };
 
-#define MAX_TX_BYTES 364
+#define MAX_TX_DATA_SIZE 364
 #define SIG_SIZE 64
 struct spend_tx_t
 {
     bool success;
-    char tx_data[MAX_TX_BYTES];
-    size_t tx_data_size;
+    char data[MAX_TX_DATA_SIZE];
+    size_t data_size;
     char signature[SIG_SIZE];
 };
 
@@ -41,7 +41,7 @@ extern "C" {
     void lzap_network_set(char network_byte);
     bool lzap_mnemonic_create(char *output, size_t size);
     bool lzap_mnemonic_check(const char *mnemonic);
-    void lzap_seed_to_address(const char *seed, char *output);
+    void lzap_seed_address(const char *seed, char *output);
     struct int_result_t lzap_address_balance(const char *address);
     struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count);
     struct int_result_t lzap_transaction_fee();

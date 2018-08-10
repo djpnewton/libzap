@@ -307,7 +307,7 @@ bool lzap_mnemonic_check(const char *mnemonic)
     return mnemonic_check(mnemonic);
 }
 
-void lzap_seed_to_address(const char *seed, char *output)
+void lzap_seed_address(const char *seed, char *output)
 {
     check_network();
     waves_seed_to_address(seed, g_network, output);
@@ -616,14 +616,14 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     }
 
     // convert to byte array
-    if (!waves_transfer_transaction_to_bytes(&tx, result.tx_data, &result.tx_data_size, 0))
+    if (!waves_transfer_transaction_to_bytes(&tx, result.data, &result.data_size, 0))
     {
         debug_print("lzap_transaction_create: failed to convert to bytes\n");
         return result;
     }
 
     // sign tx
-    if (!waves_message_sign(&privkey, result.tx_data, result.tx_data_size, result.signature))
+    if (!waves_message_sign(&privkey, result.data, result.data_size, result.signature))
     {
         debug_print("lzap_transaction_create: failed to create signature\n");
         return result;
@@ -663,7 +663,7 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx)
 
     // first parse the transaction and encode the strings to base58
     TransferTransactionsBytes ttx_bytes;
-    if (!waves_parse_transfer_transaction(spend_tx.tx_data, 0, &ttx_bytes))
+    if (!waves_parse_transfer_transaction(spend_tx.data, 0, &ttx_bytes))
     {
         debug_print("lzap_transaction_broadcast: failed to parse tx data\n");
         goto cleanup;
