@@ -16,11 +16,13 @@ CTestTestfile.cmake
 
 generated-src/
 test/build
+deps/openssl-android.tar.gz
+deps/openssl-ios.tar.gz
 deps/openssl
+deps/libcurl-android-ios.zip
 deps/curl-android-ios-*
+deps/jansson_v2.11.zip
 deps/jansson-*
 src/ndk_build
+src/xcode_build
 src/build
-src/openssl-dev-1.0.2o-android.tar.gz
-src/libcurl-android-ios.zip
-jansson_v2.11.zip

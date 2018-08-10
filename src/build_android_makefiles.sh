@@ -29,23 +29,23 @@ LIBCURL_ROOT_DIR=$DEPS/curl-android-ios-2aead71c1921d87cf7330d2acd581b1307adb1e1
 JANSSON_ROOT_DIR=$DEPS/jansson-2.11
 
 if [ ! -d $OPENSSL_ROOT_DIR ]; then
-    # from https://www.teskalabs.com/blog/openssl-binary-distribution-for-developers-static-library
-    wget -nc https://getseacatiostoracc.blob.core.windows.net/getseacatio/openssl/openssl-dev-1.0.2o-android.tar.gz
     mkdir -p $DEPS
-    tar xvf openssl-dev-1.0.2o-android.tar.gz -C $DEPS
+    # from https://www.teskalabs.com/blog/openssl-binary-distribution-for-developers-static-library
+    wget -nc https://getseacatiostoracc.blob.core.windows.net/getseacatio/openssl/openssl-dev-1.0.2o-android.tar.gz -O $DEPS/openssl-android.tar.gz
+    tar xvf $DEPS/openssl-android.tar.gz -C $DEPS
 fi
 
 if [ ! -d $LIBCURL_ROOT_DIR ]; then
-    # from https://github.com/gcesarmza/curl-android-ios
-    wget -nc https://github.com/gcesarmza/curl-android-ios/archive/2aead71c1921d87cf7330d2acd581b1307adb1e1.zip -O libcurl-android-ios.zip
     mkdir -p $DEPS
-    unzip libcurl-android-ios.zip -d $DEPS
+    # from https://github.com/gcesarmza/curl-android-ios
+    wget -nc https://github.com/gcesarmza/curl-android-ios/archive/2aead71c1921d87cf7330d2acd581b1307adb1e1.zip -O $DEPS/libcurl-android-ios.zip
+    unzip $DEPS/libcurl-android-ios.zip -d $DEPS
 fi
 
 if [ ! -d $JANSSON_ROOT_DIR ]; then
-    wget -nc https://github.com/akheron/jansson/archive/v2.11.zip -O ../jansson_v2.11.zip
     mkdir -p $DEPS
-    unzip ../jansson_v2.11.zip -d $DEPS
+    wget -nc https://github.com/akheron/jansson/archive/v2.11.zip -O $DEPS/jansson_v2.11.zip
+    unzip $DEPS/jansson_v2.11.zip -d $DEPS
 fi
 
 cmake "-GUnix Makefiles" \
