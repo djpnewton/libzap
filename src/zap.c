@@ -194,7 +194,7 @@ bool get_url(const char *url, struct curl_data_t *data)
     return false;
 }
 
-bool post_url(const char *url, const char *post_data)
+bool post_url(const char *url, const char *post_data, struct curl_data_t *response_data)
 {
 #ifdef __ANDROID__
     if (!cacert_pem_file_write())
@@ -203,8 +203,6 @@ bool post_url(const char *url, const char *post_data)
         return false;
     }
 #endif
-    // init data
-    struct curl_data_t data = {};
     // use curl to request
     CURL* curl = curl_easy_init();
     if (curl)
@@ -213,7 +211,7 @@ bool post_url(const char *url, const char *post_data)
         CURLcode res;
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response_data);
         headers = curl_slist_append(headers, "Content-Type: application/json");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
@@ -233,7 +231,7 @@ bool post_url(const char *url, const char *post_data)
                 return true;
             }
             debug_print("post_url: response_code (%ld, %s)\n", response_code, url);
-            debug_print("post_url: data: %s\n", data.ptr);
+            debug_print("post_url: data: %s\n", response_data->ptr);
         }
         debug_print("post_url: curl code (%u, %s)\n", res, url);
         curl_easy_cleanup(curl);
@@ -250,13 +248,13 @@ bool get_waves_endpoint(const char *endpoint, struct curl_data_t *data)
     return get_url(url, data);
 }
 
-bool post_waves_endpoint(const char *endpoint, const char *post_data)
+bool post_waves_endpoint(const char *endpoint, const char *post_data, struct curl_data_t *response_data)
 {
     char url[MAX_URL];
     int res = snprintf(url, MAX_URL, "%s%s", network_host(), endpoint);
     if (res < 0 || res >= MAX_URL)
         return false;
-    return post_url(url, post_data);
+    return post_url(url, post_data, response_data);
 }
 
 void print_json_error(const char *function, json_error_t *error)
@@ -397,6 +395,61 @@ cleanup:
     return balance;
 }
 
+bool tx_from_json(json_t *tx_object, struct tx_t *tx)
+{
+    if (!json_is_object(tx_object))
+    {
+        debug_print("tx_from_json: tx_object is not an object\n");
+        return false;
+    }
+    if (!get_json_string_from_object(tx_object, "id", tx->id, MAX_TXFIELD))
+    {
+        debug_print("tx_from_json: failed to get tx id\n");
+        return false;
+    }
+    if (!get_json_string_from_object(tx_object, "sender", tx->sender, MAX_TXFIELD))
+    {
+        debug_print("tx_from_json: failed to get tx sender\n");
+        return false;
+    }
+    if (!get_json_string_from_object(tx_object, "recipient", tx->recipient, MAX_TXFIELD))
+    {
+        debug_print("tx_from_json: failed to get tx recipient\n");
+        return false;
+    }
+    if (!get_json_string_from_object(tx_object, "assetId", tx->asset_id, MAX_TXFIELD))
+    {
+        debug_print("tx_from_json: failed to get tx asset_id\n");
+        return false;
+    }
+    if (!get_json_string_from_object(tx_object, "feeAsset", tx->fee_asset, MAX_TXFIELD))
+    {
+        debug_print("tx_from_json: failed to get tx fee_asset\n");
+        return false;
+    }
+    if (!get_json_string_from_object(tx_object, "attachment", tx->attachment, MAX_TXFIELD))
+    {
+        debug_print("tx_from_json: failed to get tx attachment\n");
+        return false;
+    }
+    if (!get_json_int64_from_object(tx_object, "amount", &tx->amount))
+    {
+        debug_print("tx_from_json: failed to get tx amount\n");
+        return false;
+    }
+    if (!get_json_int64_from_object(tx_object, "fee", &tx->fee))
+    {
+        debug_print("tx_from_json: failed to get tx fee\n");
+        return false;
+    }
+    if (!get_json_int64_from_object(tx_object, "timestamp", &tx->timestamp))
+    {
+        debug_print("tx_from_json: failed to get tx timestamp\n");
+        return false;
+    }
+    return true;
+}
+
 struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count)
 {
     check_network();
@@ -437,57 +490,11 @@ struct int_result_t lzap_address_transactions(const char *address, struct tx_t *
         for (int i = 0; i < json_array_size(tx_array); i++)
         {
             json_t *tx_object = json_array_get(tx_array, i);
-            if (!json_is_object(tx_object))
+            if (!tx_from_json(tx_object, &txs[i]))
             {
-                debug_print("lzap_address_transactions: tx_object is not an object\n");
+                debug_print("lzap_address_transactions: tx_from_json failed\n");
                 goto cleanup;
             }
-            if (!get_json_string_from_object(tx_object, "id", txs[i].id, MAX_TXFIELD))
-            {
-                debug_print("lzap_address_transactions: failed to get tx id\n");
-                goto cleanup;
-            }
-            if (!get_json_string_from_object(tx_object, "sender", txs[i].sender, MAX_TXFIELD))
-            {
-                debug_print("lzap_address_transactions: failed to get tx sender\n");
-                goto cleanup;
-            }
-            if (!get_json_string_from_object(tx_object, "recipient", txs[i].recipient, MAX_TXFIELD))
-            {
-                debug_print("lzap_address_transactions: failed to get tx recipient\n");
-                goto cleanup;
-            }
-            if (!get_json_string_from_object(tx_object, "assetId", txs[i].asset_id, MAX_TXFIELD))
-            {
-                debug_print("lzap_address_transactions: failed to get tx asset_id\n");
-                goto cleanup;
-            }
-            if (!get_json_string_from_object(tx_object, "feeAsset", txs[i].fee_asset, MAX_TXFIELD))
-            {
-                debug_print("lzap_address_transactions: failed to get tx fee_asset\n");
-                goto cleanup;
-            }
-            if (!get_json_string_from_object(tx_object, "attachment", txs[i].attachment, MAX_TXFIELD))
-            {
-                debug_print("lzap_address_transactions: failed to get tx attachment\n");
-                goto cleanup;
-            }
-            if (!get_json_int64_from_object(tx_object, "amount", &txs[i].amount))
-            {
-                debug_print("lzap_address_transactions: failed to get tx amount\n");
-                goto cleanup;
-            }
-            if (!get_json_int64_from_object(tx_object, "fee", &txs[i].fee))
-            {
-                debug_print("lzap_address_transactions: failed to get tx fee\n");
-                goto cleanup;
-            }
-            if (!get_json_int64_from_object(tx_object, "timestamp", &txs[i].timestamp))
-            {
-                debug_print("lzap_address_transactions: failed to get tx timestamp\n");
-                goto cleanup;
-            }
-
             result.value = i + 1;
         }
         result.success = true;
@@ -653,7 +660,7 @@ bool json_set_int64(json_t *object, char *field, long long value)
     return true;
 }
 
-bool lzap_transaction_broadcast(struct spend_tx_t spend_tx)
+bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx)
 {
     check_network();
 
@@ -713,8 +720,31 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx)
     debug_print("lzap_transaction_broadcast: json_data '%s'\n", json_data);
 
     // now broadcast the data
+    struct curl_data_t data = {};
     char *endpoint = "/assets/broadcast/transfer";
-    result = post_waves_endpoint(endpoint, json_data);
+    if (!post_waves_endpoint(endpoint, json_data, &data))
+        goto cleanup;
+    json_decref(root);
+    root = NULL;
+    free(json_data);
+    json_data = NULL;
+
+    // the broadcast was successful
+    result = true;
+
+    // parse the response
+    json_error_t error;
+    root = json_loads(data.ptr, 0, &error);
+    if (!root)
+    {
+        print_json_error("lzap_transaction_broadcast", &error);
+        goto cleanup;
+    }
+    if (!tx_from_json(root, broadcast_tx))
+    {
+        debug_print("lzap_transaction_broadcast: tx_from_json failed\n");
+        goto cleanup;
+    }
 
 cleanup:
     if (root)

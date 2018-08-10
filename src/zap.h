@@ -46,7 +46,7 @@ extern "C" {
     struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count);
     struct int_result_t lzap_transaction_fee();
     struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment);
-    bool lzap_transaction_broadcast(struct spend_tx_t spend_tx);
+    bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx);
 
     bool lzap_b58_enc(void *src, size_t src_sz, char *dst, size_t dst_sz);
 #ifdef __cplusplus

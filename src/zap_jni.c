@@ -182,6 +182,29 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1balance(
     return create_jni_int_result(env, balance);
 }
 
+bool populate_jni_tx(JNIEnv* env, jobject jni_tx, struct tx_t *tx)
+{
+    if (!set_jni_object_str(env, jni_tx, "Id", tx->id))
+        return false;
+    if (!set_jni_object_str(env, jni_tx, "Sender", tx->sender))
+        return false;
+    if (!set_jni_object_str(env, jni_tx, "Recipient", tx->recipient))
+        return false;
+    if (!set_jni_object_str(env, jni_tx, "AssetId", tx->asset_id))
+        return false;
+    if (!set_jni_object_str(env, jni_tx, "FeeAsset", tx->fee_asset))
+        return false;
+    if (!set_jni_object_str(env, jni_tx, "Attachment", tx->attachment))
+        return false;
+    if (!set_jni_object_long(env, jni_tx, "Amount", tx->amount))
+        return false;
+    if (!set_jni_object_long(env, jni_tx, "Fee", tx->fee))
+        return false;
+    if (!set_jni_object_long(env, jni_tx, "Timestamp", tx->timestamp))
+        return false;
+    return true;
+}
+
 JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1transactions(
     JNIEnv* env, jobject thiz, jstring address, jobjectArray txs, jint count)
 {
@@ -203,23 +226,7 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1transact
             {
                 debug_print("populate jni array element #%d", i);
                 jobject tx = (*env)->GetObjectArrayElement(env, txs, i);
-                if (!set_jni_object_str(env, tx, "Id", c_txs[i].id))
-                    goto cleanup;
-                if (!set_jni_object_str(env, tx, "Sender", c_txs[i].sender))
-                    goto cleanup;
-                if (!set_jni_object_str(env, tx, "Recipient", c_txs[i].recipient))
-                    goto cleanup;
-                if (!set_jni_object_str(env, tx, "AssetId", c_txs[i].asset_id))
-                    goto cleanup;
-                if (!set_jni_object_str(env, tx, "FeeAsset", c_txs[i].fee_asset))
-                    goto cleanup;
-                if (!set_jni_object_str(env, tx, "Attachment", c_txs[i].attachment))
-                    goto cleanup;
-                if (!set_jni_object_long(env, tx, "Amount", c_txs[i].amount))
-                    goto cleanup;
-                if (!set_jni_object_long(env, tx, "Fee", c_txs[i].fee))
-                    goto cleanup;
-                if (!set_jni_object_long(env, tx, "Timestamp", c_txs[i].timestamp))
+                if (!populate_jni_tx(env, tx, &c_txs[i]))
                     goto cleanup;
             }
             // all jni object properties set
@@ -264,13 +271,17 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1crea
 }
 
 JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1broadcast(
-    JNIEnv* env, jobject thiz, jobject spend_tx)
+    JNIEnv* env, jobject thiz, jobject spend_tx, jobject broadcast_tx)
 {
     // create c compatible structures
     struct spend_tx_t spend_tx_native = {};
     if (!extract_jni_spend_tx(env, spend_tx, &spend_tx_native))
         return false;
     // get result
-    return lzap_transaction_broadcast(spend_tx_native);
+    struct tx_t broadcast_tx_native;
+    jboolean result = lzap_transaction_broadcast(spend_tx_native, &broadcast_tx_native);
+    if (result)
+        populate_jni_tx(env, broadcast_tx, &broadcast_tx_native);
+    return result;
 }
 

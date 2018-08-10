@@ -13,6 +13,16 @@ void print_hex(unsigned char *buf, size_t sz)
         printf("%02x", buf[i]);
 }
 
+void print_tx(struct tx_t tx, int i)
+{
+    printf("  tx-%d\n    id: %s\n    sender: %s\n    recipient: %s\n",
+        i, tx.id, tx.sender, tx.recipient);
+    printf("    asset id: %s\n    fee asset: %s\n    attachment: %s\n",
+        tx.asset_id, tx.fee_asset, tx.attachment);
+    printf("    amount: %lld\n    fee: %lld\n    timestamp: %lld\n",
+        tx.amount, tx.fee, tx.timestamp);
+}
+
 std::vector<unsigned char> hex_str_to_vec(std::string &in)
 {
     size_t len = in.length();
@@ -47,8 +57,8 @@ int main(int argc, char *argv[])
     args::ValueFlag<std::string> recipient_opt(create, "recipient", "recipient to send to", {'r'});
     args::ValueFlag<std::string> attachment_opt(create, "attachment", "attachment for tx", {'A'});
     args::Command broadcast(commands, "broadcast", "broadcast spend transaction");
-    args::ValueFlag<std::string> tx_data_opt(broadcast, "data", "transaction data (hex string - no leading '0x')", {'d'});
-    args::ValueFlag<std::string> sig_data_opt(broadcast, "signature", "signature data (hex string - no leading '0x')", {'s'});
+    args::ValueFlag<std::string> data_opt(broadcast, "data", "transaction data (hex string - no leading '0x')", {'d'});
+    args::ValueFlag<std::string> sig_opt(broadcast, "signature", "signature data (hex string - no leading '0x')", {'s'});
 
     args::Group arguments(p, "arguments", args::Group::Validators::DontCare, args::Options::Global);
     args::ValueFlag<char> network(arguments, "network", "Mainnet or testnet (default 'T')", {'n'});
@@ -86,7 +96,7 @@ int main(int argc, char *argv[])
             // seed to address
             auto seed = args::get(seed_opt).c_str();
             char address[1024];
-            lzap_seed_to_address(seed, address);
+            lzap_seed_address(seed, address);
             printf("seed: %s\naddress: %s\n", seed, address);
         }
         else if (balance)
@@ -105,14 +115,7 @@ int main(int argc, char *argv[])
             printf("address transactions success: %d\n", result.success);
             if (result.success)
                 for (int i = 0; i < result.value; i++)
-                {
-                    printf("  tx-%d\n    id: %s\n    sender: %s\n    recipient: %s\n",
-                        i, txs[i].id, txs[i].sender, txs[i].recipient);
-                    printf("    asset id: %s\n    fee asset: %s\n    attachment: %s\n",
-                        txs[i].asset_id, txs[i].fee_asset, txs[i].attachment);
-                    printf("    amount: %lld\n    fee: %lld\n    timestamp: %lld\n",
-                        txs[i].amount, txs[i].fee, txs[i].timestamp);
-                }
+                    print_tx(txs[i], i);
         }
         else if (create)
         {
@@ -127,7 +130,7 @@ int main(int argc, char *argv[])
             printf("transaction fee: %llu\n", fee.value);
             struct spend_tx_t tx = lzap_transaction_create(seed, recipient, amount, fee.value, attachment);
             printf("transaction create:\n\tsuccess:   %d\n\tdata:      ", tx.success);
-            print_hex((unsigned char*)tx.tx_data, tx.tx_data_size);
+            print_hex((unsigned char*)tx.data, tx.data_size);
             printf("\n\tsignature: ");
             print_hex((unsigned char*)tx.signature, sizeof(tx.signature));
             printf("\n");
@@ -135,14 +138,17 @@ int main(int argc, char *argv[])
         else if (broadcast)
         {
             // broadcast tx
-            auto tx_data_hex = args::get(tx_data_opt);
-            auto sig_data_hex = args::get(sig_data_opt);
-            std::vector<unsigned char> tx_data = hex_str_to_vec(tx_data_hex);
-            std::vector<unsigned char> sig_data = hex_str_to_vec(sig_data_hex);
+            auto data_hex = args::get(data_opt);
+            auto sig_hex = args::get(sig_opt);
+            std::vector<unsigned char> data = hex_str_to_vec(data_hex);
+            std::vector<unsigned char> sig_data = hex_str_to_vec(sig_hex);
             struct spend_tx_t tx = {};
-            memcpy(&tx.tx_data, &tx_data[0], tx_data.size());
+            memcpy(&tx.data, &data[0], data.size());
             memcpy(&tx.signature, &sig_data[0], sig_data.size());
-            printf("transaction broadcast: %d\n", lzap_transaction_broadcast(tx));
+            struct tx_t broadcast_tx;
+            bool result = lzap_transaction_broadcast(tx, &broadcast_tx);
+            printf("transaction broadcast: %d\n", result);
+            print_tx(tx_broadcast, 0);
         }
 
         std::cout << std::endl;
