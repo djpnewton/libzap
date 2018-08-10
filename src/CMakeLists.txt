@@ -21,12 +21,12 @@ function(create_resources dir output)
     endforeach()
 endfunction()
 
-add_subdirectory(../waves-c build/waves-c)
+add_subdirectory(../deps/waves-c build/waves-c)
 add_subdirectory(../deps/jansson-2.11 build/jansson)
 
 project(zap)
 
-set(TREZOR ../trezor-crypto/)
+set(TREZOR ../deps/trezor-crypto/)
 set(BIP39_SOURCE ${TREZOR}/bip39.c ${TREZOR}/hmac.c ${TREZOR}/rand.c ${TREZOR}/sha2.c ${TREZOR}/pbkdf2.c ${TREZOR}/memzero.c)
 
 set(SOURCE zap.c)

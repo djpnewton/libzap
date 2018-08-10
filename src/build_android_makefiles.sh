@@ -2,10 +2,22 @@
 
 set -e
 
-if [[ -z "${ANDROID_NDK}" ]]; then
-  NDK=/usr/lib/android-ndk
-else
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    Linux*)     machine=Linux;;
+    Darwin*)    machine=Mac;;
+    CYGWIN*)    machine=Cygwin;;
+    MINGW*)     machine=MinGw;;
+    *)          machine="UNKNOWN:${unameOut}"
+esac
+echo $machine
+
+if [[ ! -z "${ANDROID_NDK}" ]]; then
   NDK=$ANDROID_NDK
+elif [ "$machine" == "Mac" ]; then
+  NDK=~/Library/Android/sdk/ndk-bundle
+else
+  NDK=/usr/lib/android-ndk
 fi
 MAKE=make
 CMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake
