@@ -26,3 +26,4 @@ deps/jansson-*
 src/ndk_build
 src/xcode_build
 src/build
+src/libzap_combined.a
