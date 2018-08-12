@@ -2,7 +2,7 @@
 
 set -e
 
-emulator=$1
+sim=$1
 
 DEPS=../deps
 OPENSSL_ROOT_DIR=$DEPS/openssl
@@ -23,7 +23,7 @@ LIBEXT=".a"
 
 OUT="zap_combined"
 
-if [ "$emulator" == "emulator" ]; then
+if [ "$sim" == "sim" ]; then
   ARCHS="x86_64"
 else
   ARCHS="armv7 armv7s arm64 i386 x86_64"
@@ -44,7 +44,7 @@ do
   rm $INLIBS
 done
 
-if [ "$emulator" == "emulator" ]; then
+if [ "$sim" == "sim" ]; then
   OUTLIBS=$LIBPREFIX$OUT-${ARCHS}$LIBEXT
 else
   OUTLIBS=`eval echo $LIBPREFIX$OUT-\{${ARCHS// /,}\}$LIBEXT`

@@ -3,11 +3,11 @@
 set -e
 
 # get command line params
-emulator=$1
+sim=$1
 
 MAKE=make
 CMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake
-if [ "$emulator" == "emulator" ]; then
+if [ "$sim" == "sim" ]; then
     IOS_PLATFORM=SIMULATOR64
 else
     IOS_PLATFORM=OS
