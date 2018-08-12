@@ -2,9 +2,16 @@
 
 set -e
 
+# get command line params
+emulator=$1
+
 MAKE=make
 CMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake
-IOS_PLATFORM=OS
+if [ "$emulator" == "emulator" ]; then
+    IOS_PLATFORM=SIMULATOR64
+else
+    IOS_PLATFORM=OS
+fi
 DEPS=../deps
 OPENSSL_ROOT_DIR=$DEPS/openssl
 LIBCURL_ROOT_DIR=$DEPS/curl-android-ios-2aead71c1921d87cf7330d2acd581b1307adb1e1/prebuilt-with-ssl/iOS
