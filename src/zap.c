@@ -139,6 +139,24 @@ bool cacert_pem_file_write()
     return true;
 }
 #endif
+#ifdef __MINGW32__
+bool curl_cacert_pem_filename(char filename[MAX_FILENAME])
+{
+    memset(filename, 0, MAX_FILENAME);
+    if (GetModuleFileNameA(NULL, filename, MAX_FILENAME) <= 0)
+    {
+        debug_print("unabled to GetModuleFileNameA()\n");
+        return false;
+    }
+    char *p = strrchr(filename, '\\');
+    if(p)
+        p[0] = 0;
+    int res = snprintf(filename, MAX_FILENAME, "%s\\cacert.pem", filename);
+    if (res < 0 || res >= MAX_FILENAME)
+        return false;
+    return true;
+}
+#endif
 
 static size_t curl_write_data(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -175,6 +193,11 @@ bool get_url(const char *url, struct curl_data_t *data)
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_data);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
 #ifdef __ANDROID__
+        char filename[MAX_FILENAME];
+        if (curl_cacert_pem_filename(filename))
+            curl_easy_setopt(curl, CURLOPT_CAINFO, filename);
+#endif
+#ifdef __MINGW32__
         char filename[MAX_FILENAME];
         if (curl_cacert_pem_filename(filename))
             curl_easy_setopt(curl, CURLOPT_CAINFO, filename);
@@ -220,6 +243,11 @@ bool post_url(const char *url, const char *post_data, long *response_code, struc
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
 #ifdef __ANDROID__
+        char filename[MAX_FILENAME];
+        if (curl_cacert_pem_filename(filename))
+            curl_easy_setopt(curl, CURLOPT_CAINFO, filename);
+#endif
+#ifdef __MINGW32__
         char filename[MAX_FILENAME];
         if (curl_cacert_pem_filename(filename))
             curl_easy_setopt(curl, CURLOPT_CAINFO, filename);
