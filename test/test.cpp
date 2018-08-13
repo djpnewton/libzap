@@ -59,6 +59,11 @@ int main(int argc, char *argv[])
     args::Command broadcast(commands, "broadcast", "broadcast spend transaction");
     args::ValueFlag<std::string> data_opt(broadcast, "data", "transaction data (hex string - no leading '0x')", {'d'});
     args::ValueFlag<std::string> sig_opt(broadcast, "signature", "signature data (hex string - no leading '0x')", {'s'});
+    args::Command spend(commands, "spend", "convenience function to create and broadcast a transaction");
+    args::ValueFlag<std::string> seed_opt3(spend, "seed", "address to input", {'s'});
+    args::ValueFlag<long> amount_opt2(spend, "amount", "amount to send", {'a'});
+    args::ValueFlag<std::string> recipient_opt2(spend, "recipient", "recipient to send to", {'r'});
+    args::ValueFlag<std::string> attachment_opt2(spend, "attachment", "attachment for tx", {'A'});
 
     args::Group arguments(p, "arguments", args::Group::Validators::DontCare, args::Options::Global);
     args::ValueFlag<char> network(arguments, "network", "Mainnet or testnet (default 'T')", {'n'});
@@ -119,7 +124,7 @@ int main(int argc, char *argv[])
         }
         else if (create)
         {
-            // spend tx
+            // create tx
             auto seed = args::get(seed_opt2).c_str();
             auto recipient = args::get(recipient_opt).c_str();
             auto amount = args::get(amount_opt);
@@ -145,6 +150,28 @@ int main(int argc, char *argv[])
             struct spend_tx_t tx = {};
             memcpy(&tx.data, &data[0], data.size());
             memcpy(&tx.signature, &sig_data[0], sig_data.size());
+            struct tx_t broadcast_tx;
+            bool result = lzap_transaction_broadcast(tx, &broadcast_tx);
+            printf("transaction broadcast: %d\n", result);
+            print_tx(broadcast_tx, 0);
+        }
+        else if (spend)
+        {
+            // create tx
+            auto seed = args::get(seed_opt3).c_str();
+            auto recipient = args::get(recipient_opt2).c_str();
+            auto amount = args::get(amount_opt2);
+            auto attachment = args::get(attachment_opt2).c_str();
+
+            struct int_result_t fee = lzap_transaction_fee();
+            assert(fee.success);
+            printf("transaction fee: %llu\n", fee.value);
+            struct spend_tx_t tx = lzap_transaction_create(seed, recipient, amount, fee.value, attachment);
+            printf("transaction create:\n\tsuccess:   %d\n\tdata:      ", tx.success);
+            print_hex((unsigned char*)tx.data, tx.data_size);
+            printf("\n\tsignature: ");
+            print_hex((unsigned char*)tx.signature, sizeof(tx.signature));
+            printf("\n");
             struct tx_t broadcast_tx;
             bool result = lzap_transaction_broadcast(tx, &broadcast_tx);
             printf("transaction broadcast: %d\n", result);
