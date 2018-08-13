@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
             struct tx_t broadcast_tx;
             bool result = lzap_transaction_broadcast(tx, &broadcast_tx);
             printf("transaction broadcast: %d\n", result);
-            print_tx(tx_broadcast, 0);
+            print_tx(broadcast_tx, 0);
         }
 
         std::cout << std::endl;
