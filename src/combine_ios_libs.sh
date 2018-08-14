@@ -18,7 +18,7 @@ cp build/waves-c/lib/* xcode_build/
 INPATH="xcode_build"
 
 LIBPREFIX="lib"
-LIBS="crypto curl jansson ssl waves_c zap"
+LIBS="crypto curl jansson ssl waves_c z zap"
 LIBEXT=".a"
 
 OUT="zap_combined"
