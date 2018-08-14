@@ -26,8 +26,8 @@ add_subdirectory(../deps/jansson-2.11 build/jansson)
 
 project(zap)
 
-set(TREZOR ../deps/trezor-crypto/)
-set(BIP39_SOURCE ${TREZOR}/bip39.c ${TREZOR}/hmac.c ${TREZOR}/rand.c ${TREZOR}/sha2.c ${TREZOR}/pbkdf2.c ${TREZOR}/memzero.c)
+set(BIP39 ../deps/bip39/)
+set(BIP39_SOURCE ${BIP39}/bip39.c ${BIP39}/hmac.c ${BIP39}/rand.c ${BIP39}/sha2.c ${BIP39}/pbkdf2.c ${BIP39}/memzero.c)
 
 set(SOURCE zap.c)
 set(LIBRARY_TYPE SHARED)

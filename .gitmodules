@@ -1,9 +1,6 @@
 [submodule "deps/djinni"]
 	path = deps/djinni
 	url = https://github.com/dropbox/djinni.git
-[submodule "trezor-crypto"]
-	path = deps/trezor-crypto
-	url = https://github.com/trezor/trezor-crypto.git
 [submodule "deps/zlib"]
 	path = deps/zlib
 	url = https://github.com/madler/zlib.git
