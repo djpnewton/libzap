@@ -38,6 +38,9 @@ struct spend_tx_t
 extern "C" {
 #endif
     int lzap_version();
+    const char* lzap_node_get();
+    void lzap_node_set(const char *url);
+    char lzap_network_get();
     void lzap_network_set(char network_byte);
     bool lzap_mnemonic_create(char *output, size_t size);
     bool lzap_mnemonic_check(const char *mnemonic);

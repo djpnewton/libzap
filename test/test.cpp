@@ -39,8 +39,8 @@ std::vector<unsigned char> hex_str_to_vec(std::string &in)
 int main(int argc, char *argv[])
 {
     args::ArgumentParser p("libzap test app");
-    args::Group commands(p, "commands");
 
+    args::Group commands(p, "commands");
     args::Command version(commands, "version", "show the libzap version");
     args::Command mnemonic(commands, "mnemonic", "create a bip39 mnemonic");
     args::Command mnemonic_check(commands, "mnemonic_check", "check a bip39 mnemonic");
@@ -66,17 +66,31 @@ int main(int argc, char *argv[])
     args::ValueFlag<std::string> attachment_opt2(spend, "attachment", "attachment for tx", {'A'});
 
     args::Group arguments(p, "arguments", args::Group::Validators::DontCare, args::Options::Global);
-    args::ValueFlag<char> network(arguments, "network", "Mainnet or testnet (default 'T')", {'n'});
+    args::ValueFlag<char> network(arguments, "network", "Mainnet ('W') or testnet ('T' - default)", {'n'});
+    args::ValueFlag<std::string> node(arguments, "node", "Use a custom waves node", {'N'});
     args::HelpFlag h(arguments, "help", "help", {'h', "help"});
 
     try
     {
+        p.ParseCLI(argc, argv);
+
         // set the network
         lzap_network_set('T');
         if (network)
+        {
+            printf("setting network\n");
             lzap_network_set(args::get(network));
+        }
 
-        p.ParseCLI(argc, argv);
+        // set the node
+        if (node)
+        {
+            printf("setting node\n");
+            lzap_node_set(args::get(node).c_str());
+        }
+
+        printf("Using network: %c, node: %s\n", lzap_network_get(), lzap_node_get());
+
         if (version)
         {
             // libzap version

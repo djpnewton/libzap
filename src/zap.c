@@ -18,6 +18,9 @@
 // -- Waves constants --
 //
 
+#define TESTNET_NETWORK_BYTE 'T'
+#define MAINNET_NETWORK_BYTE 'W'
+
 #define TESTNET_HOST "https://testnode1.wavesnodes.com"
 #define MAINNET_HOST "https://nodes.wavesnodes.com"
 
@@ -42,7 +45,8 @@ struct curl_data_t
 // -- Library globals --
 //
 
-char g_network = 'T';
+char g_network = TESTNET_NETWORK_BYTE;
+char g_network_host[1024] = {};
 
 //
 // -- Logging definitions --
@@ -62,21 +66,18 @@ char g_network = 'T';
 // -- Internal functions --
 //
 
-void check_network()
-{
-    assert(g_network != 'T' || g_network != 'W');
-}
-
 const char* network_host()
 {
-    if (g_network == 'W')
+    if (g_network_host[0] != 0)
+        return g_network_host;
+    if (g_network == MAINNET_NETWORK_BYTE)
         return MAINNET_HOST;
     return TESTNET_HOST;
 }
 
 const char* network_assetid()
 {
-    if (g_network == 'W')
+    if (g_network == MAINNET_NETWORK_BYTE)
         return MAINNET_ASSETID;
     return TESTNET_ASSETID;
 }
@@ -277,9 +278,31 @@ int lzap_version()
     return 1;
 }
 
+const char* lzap_node_get()
+{
+    return network_host();
+}
+
+void lzap_node_set(const char *url)
+{
+    if (!url)
+        memset(g_network_host, 0, sizeof(g_network_host));
+    else
+    {
+        strncpy(g_network_host, url, sizeof(g_network_host));
+        g_network_host[sizeof(g_network_host)-1] = 0;
+    }
+}
+
+char lzap_network_get()
+{
+    return g_network;
+}
+
 void lzap_network_set(char network_byte)
 {
     g_network = network_byte;
+    assert(g_network == TESTNET_NETWORK_BYTE || g_network == MAINNET_NETWORK_BYTE);
 }
 
 bool lzap_mnemonic_create(char *output, size_t size)
@@ -307,7 +330,6 @@ bool lzap_mnemonic_check(const char *mnemonic)
 
 void lzap_seed_address(const char *seed, char *output)
 {
-    check_network();
     waves_seed_to_address(seed, g_network, output);
 }
 
@@ -358,8 +380,6 @@ bool get_json_int64_from_object(json_t *object, const char *field_name, long lon
 
 struct int_result_t lzap_address_balance(const char *address)
 {
-    check_network();
-
     struct int_result_t balance = { false, 0 };
 
     char endpoint[MAX_URL];
@@ -452,8 +472,6 @@ bool tx_from_json(json_t *tx_object, struct tx_t *tx)
 
 struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count)
 {
-    check_network();
-
     struct int_result_t result = { false, 0 };
 
     char endpoint[MAX_URL];
@@ -507,8 +525,6 @@ cleanup:
 
 struct int_result_t lzap_transaction_fee()
 {
-    check_network();
-
     struct int_result_t result = { false, 0 };
 
     // first get the asset info
@@ -559,8 +575,6 @@ cleanup:
 
 struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment)
 {
-    check_network();
-
     struct spend_tx_t result = {};
 
     // get private and public key
@@ -662,8 +676,6 @@ bool json_set_int64(json_t *object, char *field, long long value)
 
 bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx)
 {
-    check_network();
-
     bool result = false;
     char *json_data = NULL;
     json_t *root = NULL;
