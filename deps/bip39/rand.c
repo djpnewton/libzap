@@ -49,7 +49,7 @@ uint32_t random32(void)
 #else
     FILE* f = fopen("/dev/urandom", "r");
     assert(f);
-    size_t len_read = fread(r, 1, sizeof(r), f);
+    size_t len_read = fread(&r, 1, sizeof(r), f);
     assert(len_read == sizeof(r));
     fclose(f);
 #endif
