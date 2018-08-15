@@ -11,7 +11,7 @@
 #include "../deps/waves-c/src/crypto/waves_crypto.h"
 #include "../deps/waves-c/src/crypto/base58/libbase58.h"
 #include "../deps/waves-c/src/crypto/transactions/transfer_transaction.h"
-#include "../deps/trezor-crypto/bip39.h"
+#include "../deps/bip39/bip39.h"
 #include "zap.h"
 
 //
