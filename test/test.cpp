@@ -45,25 +45,30 @@ int main(int argc, char *argv[])
     args::Command mnemonic(commands, "mnemonic", "create a bip39 mnemonic");
     args::Command mnemonic_check(commands, "mnemonic_check", "check a bip39 mnemonic");
     args::ValueFlag<std::string> mnemonic_opt(mnemonic_check, "mnemonic", "mnemonic to input", {'m'});
-    args::Command seed_to_address(commands, "seed_to_address", "convert a seed to an address");
-    args::ValueFlag<std::string> seed_opt(seed_to_address, "seed", "seed to input", {'s'});
+    args::Command mnemonic_wordlist(commands, "mnemonic_wordlist", "print all bip39 words");
+    args::Command seed_address(commands, "seed_address", "convert a seed to an address");
+    args::ValueFlag<std::string> seed_opt_addr(seed_address, "seed", "seed to input", {'s'});
+    args::Command check(commands, "check", "check the validity of an address");
+    args::ValueFlag<std::string> address_opt_check(check, "address", "address to input", {'a'});
     args::Command balance(commands, "balance", "balance of an address");
-    args::ValueFlag<std::string> address_opt(balance, "address", "address to input", {'a'});
+    args::ValueFlag<std::string> address_opt_balance(balance, "address", "address to input", {'a'});
     args::Command transactions(commands, "transactions", "transactions of an address");
-    args::ValueFlag<std::string> address_opt2(transactions, "address", "address to input", {'a'});
+    args::ValueFlag<std::string> address_opt_txs(transactions, "address", "address to input", {'a'});
     args::Command create(commands, "create", "create spend transaction for an address");
-    args::ValueFlag<std::string> seed_opt2(create, "seed", "address to input", {'s'});
-    args::ValueFlag<long> amount_opt(create, "amount", "amount to send", {'a'});
-    args::ValueFlag<std::string> recipient_opt(create, "recipient", "recipient to send to", {'r'});
-    args::ValueFlag<std::string> attachment_opt(create, "attachment", "attachment for tx", {'A'});
+    args::ValueFlag<std::string> seed_opt_create(create, "seed", "address to input", {'s'});
+    args::ValueFlag<long> amount_top_create(create, "amount", "amount to send", {'a'});
+    args::ValueFlag<std::string> recipient_opt_create(create, "recipient", "recipient to send to", {'r'});
+    args::ValueFlag<std::string> attachment_opt_create(create, "attachment", "attachment for tx", {'A'});
     args::Command broadcast(commands, "broadcast", "broadcast spend transaction");
     args::ValueFlag<std::string> data_opt(broadcast, "data", "transaction data (hex string - no leading '0x')", {'d'});
     args::ValueFlag<std::string> sig_opt(broadcast, "signature", "signature data (hex string - no leading '0x')", {'s'});
     args::Command spend(commands, "spend", "convenience function to create and broadcast a transaction");
-    args::ValueFlag<std::string> seed_opt3(spend, "seed", "address to input", {'s'});
-    args::ValueFlag<long> amount_opt2(spend, "amount", "amount to send", {'a'});
-    args::ValueFlag<std::string> recipient_opt2(spend, "recipient", "recipient to send to", {'r'});
-    args::ValueFlag<std::string> attachment_opt2(spend, "attachment", "attachment for tx", {'A'});
+    args::ValueFlag<std::string> seed_opt_spend(spend, "seed", "address to input", {'s'});
+    args::ValueFlag<long> amount_opt_spend(spend, "amount", "amount to send", {'a'});
+    args::ValueFlag<std::string> recipient_opt_spend(spend, "recipient", "recipient to send to", {'r'});
+    args::ValueFlag<std::string> attachment_opt_spend(spend, "attachment", "attachment for tx", {'A'});
+    args::Command uriparse(commands, "uriparse", "parse a waves uri ('waves://<address>?asset=<assetid>&amount=<amount>&attachment=<attachment>')");
+    args::ValueFlag<std::string> uri_opt(uriparse, "uri", "uri to input", {'u'});
 
     args::Group arguments(p, "arguments", args::Group::Validators::DontCare, args::Options::Global);
     args::ValueFlag<char> network(arguments, "network", "Mainnet ('W') or testnet ('T' - default)", {'n'});
@@ -110,25 +115,46 @@ int main(int argc, char *argv[])
             printf("mnemonic check: %d\n", lzap_mnemonic_check(mnemonic));
             printf("mnemonic: %s\n", mnemonic);
         }
-        else if (seed_to_address)
+        else if (mnemonic_wordlist)
+        {
+            const char* const* words = lzap_mnemonic_wordlist();
+            int i = 1;
+            while (*words)
+            {
+                printf("%s ", *words);
+                if (i % 12 == 0)
+                    printf("\n");
+                words++;
+                i++;
+            }
+            printf("\n");
+        }
+        else if (seed_address)
         {
             // seed to address
-            auto seed = args::get(seed_opt).c_str();
+            auto seed = args::get(seed_opt_addr).c_str();
             char address[1024];
             lzap_seed_address(seed, address);
             printf("seed: %s\naddress: %s\n", seed, address);
         }
+        else if (check)
+        {
+            // address check
+            auto address = args::get(address_opt_check).c_str();
+            struct int_result_t result = lzap_address_check(address);
+            printf("address check success: %d\naddress check value: %lld\n", result.success, result.value);
+        }
         else if (balance)
         {
             // address balance
-            auto address = args::get(address_opt).c_str();
+            auto address = args::get(address_opt_balance).c_str();
             struct int_result_t result = lzap_address_balance(address);
             printf("address balance success: %d\naddress balance value: %lld\n", result.success, result.value);
         }
         else if (transactions)
         {
             // address transactions 
-            auto address = args::get(address_opt2).c_str();
+            auto address = args::get(address_opt_txs).c_str();
             struct tx_t txs[100];
             struct int_result_t result = lzap_address_transactions(address, txs, 100);
             printf("address transactions success: %d\n", result.success);
@@ -139,10 +165,10 @@ int main(int argc, char *argv[])
         else if (create)
         {
             // create tx
-            auto seed = args::get(seed_opt2).c_str();
-            auto recipient = args::get(recipient_opt).c_str();
-            auto amount = args::get(amount_opt);
-            auto attachment = args::get(attachment_opt).c_str();
+            auto seed = args::get(seed_opt_create).c_str();
+            auto recipient = args::get(recipient_opt_create).c_str();
+            auto amount = args::get(amount_top_create);
+            auto attachment = args::get(attachment_opt_create).c_str();
 
             struct int_result_t fee = lzap_transaction_fee();
             assert(fee.success);
@@ -172,10 +198,10 @@ int main(int argc, char *argv[])
         else if (spend)
         {
             // create tx
-            auto seed = args::get(seed_opt3).c_str();
-            auto recipient = args::get(recipient_opt2).c_str();
-            auto amount = args::get(amount_opt2);
-            auto attachment = args::get(attachment_opt2).c_str();
+            auto seed = args::get(seed_opt_spend).c_str();
+            auto recipient = args::get(recipient_opt_spend).c_str();
+            auto amount = args::get(amount_opt_spend);
+            auto attachment = args::get(attachment_opt_spend).c_str();
 
             struct int_result_t fee = lzap_transaction_fee();
             assert(fee.success);
@@ -190,6 +216,15 @@ int main(int argc, char *argv[])
             bool result = lzap_transaction_broadcast(tx, &broadcast_tx);
             printf("transaction broadcast: %d\n", result);
             print_tx(broadcast_tx, 0);
+        }
+        else if (uriparse)
+        {
+            // parse uri
+            auto uri = args::get(uri_opt).c_str();
+
+            struct waves_payment_request_t req;
+            bool result = lzap_uri_parse(uri, &req);
+            printf("uri parse: %d\n  address: %s\n  asset_id: %s\n  attachment: %s\n  amount: %llu\n", result, req.address, req.asset_id, req.attachment, req.amount);
         }
 
         std::cout << std::endl;

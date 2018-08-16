@@ -328,9 +328,41 @@ bool lzap_mnemonic_check(const char *mnemonic)
     return mnemonic_check(mnemonic);
 }
 
+const char* const* lzap_mnemonic_wordlist()
+{
+    return mnemonic_wordlist();
+}
+
 void lzap_seed_address(const char *seed, char *output)
 {
     waves_seed_to_address(seed, g_network, output);
+}
+
+struct int_result_t lzap_address_check(const char *address)
+{
+    struct int_result_t result = {};
+
+    // decode base58 address
+    char address_bytes[26] = {};
+    size_t address_bytes_sz = sizeof(address_bytes);
+    if (!b58tobin(address_bytes, &address_bytes_sz, address, 0))
+    {
+        debug_print("lzap_transaction_check: failed to decode address\n");
+        return result;
+    }
+
+    // check base58 address
+    b58_securehash_impl = zap_securehash;
+    int b58chk = b58check(address_bytes, address_bytes_sz, address);
+    if (b58chk < 0)
+    {
+        debug_print("lzap_transaction_check: error checking base58 decoded address (%d)\n", b58chk);
+        return result;
+    }
+
+    result.success = true;
+    result.value = b58chk;
+    return result;
 }
 
 bool get_json_string(json_t *string_field, char *target, int max)
@@ -764,6 +796,84 @@ cleanup:
     if (json_data)
         free(json_data);
     return result;
+}
+
+bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
+{
+    // parse waves uri in the style of
+    //     "waves://<address>?asset=<assetid>&amount=<amount>&attachment=<attachment>"
+
+    //TODO!!!:
+    // use curl_easy_escape on all values
+
+    bool result = false;
+    char local_uri[1024] = {};
+    memset(req, 0, sizeof(*req));
+
+    // copy uri so we can modify it
+    if (strlen(uri) >= sizeof(local_uri))
+        return false;
+    strncpy(local_uri, uri, sizeof(local_uri)-1);
+
+    // check for "waves://" prefix
+    size_t uri_len = strlen(local_uri);
+    if (uri_len < 8)
+    {
+        debug_print("lzap_uri_parse: uri too short");
+        return false;
+    }
+    if (strcasestr(local_uri, "waves://") != local_uri)
+    {
+        debug_print("lzap_uri_parse: uri does not match 'waves://'");
+        return false;
+    }
+    char *start = local_uri + 8;
+
+    // parse into address and query string
+    char *saveptr;
+    char *address = strtok_r(start, "?", &saveptr);
+    char *query_string = strtok_r(NULL, "?", &saveptr);
+
+    // copy address
+    strncpy(req->address, address, sizeof(req->address)-1);
+
+    // find query parameters
+    if (query_string)
+    {
+        char *saveptr_qs;
+        char *query_param = strtok_r(query_string, "&", &saveptr_qs);
+        while (query_param)
+        {
+            char *saveptr_param;
+            char *param_name = strtok_r(query_param, "=", &saveptr_param);
+            char *param_value = strtok_r(NULL, "=", &saveptr_param);
+            if (strcasecmp(param_name, "asset") == 0)
+                strncpy(req->asset_id, param_value, sizeof(req->asset_id)-1);
+            if (strcasecmp(param_name, "amount") == 0)
+                req->amount = atoll(param_value);
+            if (strcasecmp(param_name, "attachment") == 0)
+                strncpy(req->attachment, param_value, sizeof(req->attachment)-1);
+
+            query_param = strtok_r(NULL, "&", &saveptr_qs);
+        }
+    }
+
+    // validate address
+    struct int_result_t chk = lzap_address_check(req->address);
+    if (!chk.success || !chk.value)
+    {
+        debug_print("lzap_uri_parse: invalid address\n");
+        return false;
+    }
+
+    // validate asset_id
+    if (strcmp(req->asset_id, network_assetid()) != 0)
+    {
+        debug_print("lzap_uri_parse: invalid asset id (should be '%s')\n", network_assetid());
+        return false;
+    }
+
+    return true;
 }
 
 bool lzap_b58_enc(void *src, size_t src_sz, char *dst, size_t dst_sz)

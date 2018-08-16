@@ -34,6 +34,14 @@ struct spend_tx_t
     char signature[SIG_SIZE];
 };
 
+struct waves_payment_request_t
+{
+    char address[MAX_TXFIELD];
+    char asset_id[MAX_TXFIELD];
+    char attachment[MAX_TXFIELD];
+    uint64_t amount;
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -44,12 +52,15 @@ extern "C" {
     void lzap_network_set(char network_byte);
     bool lzap_mnemonic_create(char *output, size_t size);
     bool lzap_mnemonic_check(const char *mnemonic);
+    const char* const* lzap_mnemonic_wordlist();
     void lzap_seed_address(const char *seed, char *output);
+    struct int_result_t lzap_address_check(const char *address);
     struct int_result_t lzap_address_balance(const char *address);
     struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count);
     struct int_result_t lzap_transaction_fee();
     struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment);
     bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx);
+    bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req);
 
     bool lzap_b58_enc(void *src, size_t src_sz, char *dst, size_t dst_sz);
 #ifdef __cplusplus
