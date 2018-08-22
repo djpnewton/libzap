@@ -183,6 +183,27 @@ JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1check(
     return lzap_mnemonic_check(c_mnemonic);
 }
 
+JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1wordlist(
+    JNIEnv* env, jobject thiz)
+{
+    const char* const* c_words = lzap_mnemonic_wordlist();
+    const char* const* tmp = c_words;
+    int size = 0;
+    while (*tmp)
+    {
+        size++;
+        tmp++;
+    }
+    jclass cls = (*env)->FindClass(env, "java/lang/String");
+    jobjectArray words = (jobjectArray)(*env)->NewObjectArray(env, size, cls, NULL);
+    for (int i = 0; i < size; i++)
+    {
+        jstring word = (*env)->NewStringUTF(env, c_words[i]);
+        (*env)->SetObjectArrayElement(env, words, i, word);
+    }
+    return words;
+}
+
 JNIEXPORT jstring JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_seed_1address(
     JNIEnv* env, jobject thiz, jstring seed)
 {
