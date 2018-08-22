@@ -824,7 +824,7 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
     }
     if (strcasestr(local_uri, "waves://") != local_uri)
     {
-        debug_print("lzap_uri_parse: uri does not match 'waves://'");
+        debug_print("lzap_uri_parse: uri ('%s') does not match 'waves://'", local_uri);
         return false;
     }
     char *start = local_uri + 8;

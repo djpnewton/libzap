@@ -328,3 +328,28 @@ JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_transaction_1bro
     return result;
 }
 
+bool populate_jni_payment_request(JNIEnv* env, jobject jni_req, struct waves_payment_request_t *req)
+{
+    if (!set_jni_object_str(env, jni_req, "Address", req->address))
+        return false;
+    if (!set_jni_object_str(env, jni_req, "AssetId", req->asset_id))
+        return false;
+    if (!set_jni_object_str(env, jni_req, "Attachment", req->attachment))
+        return false;
+    if (!set_jni_object_long(env, jni_req, "Amount", req->amount))
+        return false;
+    return true;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_uri_1parse(
+    JNIEnv* env, jobject thiz, jstring uri, jobject payment_request)
+{
+    // create c compatible structures
+    const char *c_uri = (*env)->GetStringUTFChars(env, uri, 0);
+    struct waves_payment_request_t c_req = {};
+    // get result
+    jboolean result = lzap_uri_parse(c_uri, &c_req);
+    if (result)
+        populate_jni_payment_request(env, payment_request, &c_req);
+    return result;
+}
