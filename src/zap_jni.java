@@ -17,6 +17,9 @@ public class zap_jni {
      * with this application.
      */
     public static native int version();
+    public static native String node_get();
+    public static native void node_set(String url);
+    public static native char network_get();
     public static native void network_set(char network_byte);
     public static native String mnemonic_create();
     public static native int mnemonic_check(String mnemonic);

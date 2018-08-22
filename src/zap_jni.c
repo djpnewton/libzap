@@ -139,6 +139,28 @@ JNIEXPORT jint JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_version(JNIEnv* env,
     return lzap_version();
 }
 
+JNIEXPORT jstring JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_node_1get(
+    JNIEnv* env, jobject thiz)
+{
+    const char *c_url = lzap_node_get();
+    return (*env)->NewStringUTF(env, c_url);
+}
+
+
+JNIEXPORT void JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_node_1set(
+    JNIEnv* env, jobject thiz, jstring url)
+{
+    const char *c_url = (*env)->GetStringUTFChars(env, url, 0);
+    lzap_node_set(c_url);
+}
+
+JNIEXPORT jchar JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_network_1get(
+    JNIEnv* env, jobject thiz)
+{
+    return lzap_network_get();
+}
+
+
 JNIEXPORT void JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_network_1set(
     JNIEnv* env, jobject thiz, jchar network_byte)
 {
