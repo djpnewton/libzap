@@ -23,6 +23,18 @@ void print_tx(struct tx_t tx, int i)
         tx.amount, tx.fee, tx.timestamp);
 }
 
+void print_lzap_error()
+{
+    int code;
+    const char *msg;
+    lzap_error(&code, &msg);
+    if (code != LZAP_ERR_NONE)
+    {
+        printf("error code: %d, msg: %s\n", code, msg);
+        exit(code);
+    }
+}
+
 std::vector<unsigned char> hex_str_to_vec(std::string &in)
 {
     size_t len = in.length();
@@ -85,6 +97,7 @@ int main(int argc, char *argv[])
         {
             printf("setting network\n");
             lzap_network_set(args::get(network));
+            print_lzap_error();
         }
 
         // set the node
@@ -92,6 +105,7 @@ int main(int argc, char *argv[])
         {
             printf("setting node\n");
             lzap_node_set(args::get(node).c_str());
+            print_lzap_error();
         }
 
         printf("Using network: %c, node: %s\n", lzap_network_get(), lzap_node_get());
@@ -100,24 +114,29 @@ int main(int argc, char *argv[])
         {
             // libzap version
             printf("libzap version %d\n", lzap_version());
+            print_lzap_error();
         }
         else if (mnemonic)
         {
             // mnemonic
             char mnemonic[1024];
-            bool res = lzap_mnemonic_create(mnemonic, 1024);
-            printf("mnemonic create: %d\nmnemonic: %s\n", res, mnemonic);
+            bool result = lzap_mnemonic_create(mnemonic, 1024);
+            print_lzap_error();
+            printf("mnemonic create: %d\nmnemonic: %s\n", result, mnemonic);
         }
         else if (mnemonic_check)
         {
             // mnemonic check
             auto mnemonic = args::get(mnemonic_opt).c_str();
-            printf("mnemonic check: %d\n", lzap_mnemonic_check(mnemonic));
+            bool result = lzap_mnemonic_check(mnemonic);
+            print_lzap_error();
+            printf("mnemonic check: %d\n", result);
             printf("mnemonic: %s\n", mnemonic);
         }
         else if (mnemonic_wordlist)
         {
             const char* const* words = lzap_mnemonic_wordlist();
+            print_lzap_error();
             int i = 1;
             while (*words)
             {
@@ -135,6 +154,7 @@ int main(int argc, char *argv[])
             auto seed = args::get(seed_opt_addr).c_str();
             char address[1024];
             lzap_seed_address(seed, address);
+            print_lzap_error();
             printf("seed: %s\naddress: %s\n", seed, address);
         }
         else if (check)
@@ -142,6 +162,7 @@ int main(int argc, char *argv[])
             // address check
             auto address = args::get(address_opt_check).c_str();
             struct int_result_t result = lzap_address_check(address);
+            print_lzap_error();
             printf("address check success: %d\naddress check value: %lld\n", result.success, result.value);
         }
         else if (balance)
@@ -149,6 +170,7 @@ int main(int argc, char *argv[])
             // address balance
             auto address = args::get(address_opt_balance).c_str();
             struct int_result_t result = lzap_address_balance(address);
+            print_lzap_error();
             printf("address balance success: %d\naddress balance value: %lld\n", result.success, result.value);
         }
         else if (transactions)
@@ -157,10 +179,13 @@ int main(int argc, char *argv[])
             auto address = args::get(address_opt_txs).c_str();
             struct tx_t txs[100];
             struct int_result_t result = lzap_address_transactions(address, txs, 100);
+            print_lzap_error();
             printf("address transactions success: %d\n", result.success);
             if (result.success)
+            {
                 for (int i = 0; i < result.value; i++)
                     print_tx(txs[i], i);
+            }
         }
         else if (create)
         {
@@ -171,9 +196,10 @@ int main(int argc, char *argv[])
             auto attachment = args::get(attachment_opt_create).c_str();
 
             struct int_result_t fee = lzap_transaction_fee();
-            assert(fee.success);
+            print_lzap_error();
             printf("transaction fee: %llu\n", fee.value);
             struct spend_tx_t tx = lzap_transaction_create(seed, recipient, amount, fee.value, attachment);
+            print_lzap_error();
             printf("transaction create:\n\tsuccess:   %d\n\tdata:      ", tx.success);
             print_hex((unsigned char*)tx.data, tx.data_size);
             printf("\n\tsignature: ");
@@ -192,8 +218,10 @@ int main(int argc, char *argv[])
             memcpy(&tx.signature, &sig_data[0], sig_data.size());
             struct tx_t broadcast_tx;
             bool result = lzap_transaction_broadcast(tx, &broadcast_tx);
+            print_lzap_error();
             printf("transaction broadcast: %d\n", result);
-            print_tx(broadcast_tx, 0);
+            if (result)
+                print_tx(broadcast_tx, 0);
         }
         else if (spend)
         {
@@ -204,9 +232,10 @@ int main(int argc, char *argv[])
             auto attachment = args::get(attachment_opt_spend).c_str();
 
             struct int_result_t fee = lzap_transaction_fee();
-            assert(fee.success);
+            print_lzap_error();
             printf("transaction fee: %llu\n", fee.value);
             struct spend_tx_t tx = lzap_transaction_create(seed, recipient, amount, fee.value, attachment);
+            print_lzap_error();
             printf("transaction create:\n\tsuccess:   %d\n\tdata:      ", tx.success);
             print_hex((unsigned char*)tx.data, tx.data_size);
             printf("\n\tsignature: ");
@@ -214,8 +243,10 @@ int main(int argc, char *argv[])
             printf("\n");
             struct tx_t broadcast_tx;
             bool result = lzap_transaction_broadcast(tx, &broadcast_tx);
+            print_lzap_error();
             printf("transaction broadcast: %d\n", result);
-            print_tx(broadcast_tx, 0);
+            if (result)
+                print_tx(broadcast_tx, 0);
         }
         else if (uriparse)
         {
@@ -224,6 +255,7 @@ int main(int argc, char *argv[])
 
             struct waves_payment_request_t req;
             bool result = lzap_uri_parse(uri, &req);
+            print_lzap_error();
             printf("uri parse: %d\n  address: %s\n  asset_id: %s\n  attachment: %s\n  amount: %llu\n", result, req.address, req.asset_id, req.attachment, req.amount);
         }
 

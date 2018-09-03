@@ -47,6 +47,8 @@ struct waves_payment_request_t
 #define LZAP_ERR_NETWORK_UNREACHABLE 2
 #define LZAP_ERR_INVALID_ADDRESS 3
 #define LZAP_ERR_INVALID_ATTACHMENT 4
+#define LZAP_ERR_UNAVAILABLE_FUNDS 5
+#define LZAP_ERR_INSUFFICIENT_FEE 6
 #define LZAP_ERR_UNSPECIFIED -1
 
 #ifdef __cplusplus

@@ -197,8 +197,9 @@ bool get_url(const char *url, struct curl_data_t *data)
     return false;
 }
 
-bool post_url(const char *url, const char *post_data, struct curl_data_t *response_data)
+bool post_url(const char *url, const char *post_data, long *response_code, struct curl_data_t *response_data)
 {
+    *response_code = 0;
 #ifdef __ANDROID__
     if (!cacert_pem_file_write())
     {
@@ -226,14 +227,13 @@ bool post_url(const char *url, const char *post_data, struct curl_data_t *respon
         res = curl_easy_perform(curl);
         if (res == CURLE_OK)
         {
-            long response_code;
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-            if (response_code == 200)
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, response_code);
+            if (*response_code == 200)
             {
                 curl_easy_cleanup(curl);
                 return true;
             }
-            debug_print("post_url: response_code (%ld, %s)\n", response_code, url);
+            debug_print("post_url: response_code (%ld, %s)\n", *response_code, url);
             debug_print("post_url: data: %s\n", response_data->ptr);
         }
         debug_print("post_url: curl code (%u, %s)\n", res, url);
@@ -251,13 +251,13 @@ bool get_waves_endpoint(const char *endpoint, struct curl_data_t *data)
     return get_url(url, data);
 }
 
-bool post_waves_endpoint(const char *endpoint, const char *post_data, struct curl_data_t *response_data)
+bool post_waves_endpoint(const char *endpoint, const char *post_data, long *response_code, struct curl_data_t *response_data)
 {
     char url[MAX_URL];
     int res = snprintf(url, MAX_URL, "%s%s", network_host(), endpoint);
     if (res < 0 || res >= MAX_URL)
         return false;
-    return post_url(url, post_data, response_data);
+    return post_url(url, post_data, response_code, response_data);
 }
 
 void print_json_error(const char *function, json_error_t *error)
@@ -289,13 +289,20 @@ void set_error(int code)
             g_error_msg = "\"invalid network\": network was not \"W\" or \"T\".";
             break;
         case LZAP_ERR_NETWORK_UNREACHABLE:
-            g_error_msg = "\"network unreachable\": The set Waves node could not be reached (see \"nodeSet\".";
+            g_error_msg = "\"network unreachable\": The set Waves node could not be reached (see \"nodeSet\").";
             break;
         case LZAP_ERR_INVALID_ADDRESS:
             g_error_msg = "\"invalid address\": address is not a valid Waves address";
             break;
         case LZAP_ERR_INVALID_ATTACHMENT:
             g_error_msg = "\"invalid attachment\": attachment is longer then 140 characters";
+            break;
+        case LZAP_ERR_UNAVAILABLE_FUNDS:
+            g_error_msg = "\"unavailable funds\": transaction leads to negative asset balance";
+            break;
+        case LZAP_ERR_INSUFFICIENT_FEE:
+            g_error_msg = "\"insufficient fee\"";
+            break;
         case LZAP_ERR_UNSPECIFIED:
         default:
             g_error_msg = "\"unspecfied error\"";
@@ -731,6 +738,7 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     if (!b58tobin(recipient_bytes, &recipient_bytes_sz, recipient, 0))
     {
         debug_print("lzap_transaction_create: failed to decode recipient\n");
+        set_error(LZAP_ERR_UNSPECIFIED);
         return result;
     }
 
@@ -740,6 +748,7 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     if (b58chk < 0)
     {
         debug_print("lzap_transaction_create: error checking base58 decoded recipient (%d)\n", b58chk);
+        set_error(LZAP_ERR_UNSPECIFIED);
         return result;
     }
 
@@ -749,6 +758,7 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     if (!b58tobin(asset_id_bytes, &asset_id_bytes_sz, network_assetid(), 0))
     {
         debug_print("lzap_transaction_create: failed to decode asset id\n");
+        set_error(LZAP_ERR_UNSPECIFIED);
         return result;
     }
 
@@ -783,6 +793,7 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     if (!waves_transfer_transaction_to_bytes(&tx, (unsigned char*)result.data, &result.data_size, 0))
     {
         debug_print("lzap_transaction_create: failed to convert to bytes\n");
+        set_error(LZAP_ERR_UNSPECIFIED);
         return result;
     }
 
@@ -790,6 +801,7 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     if (!waves_message_sign(&privkey, (const unsigned char*)result.data, result.data_size, (unsigned char*)result.signature))
     {
         debug_print("lzap_transaction_create: failed to create signature\n");
+        set_error(LZAP_ERR_UNSPECIFIED);
         return result;
     }
 
@@ -817,6 +829,64 @@ bool json_set_int64(json_t *object, char *field, long long value)
     return true;
 }
 
+bool get_waves_node_error_code(struct curl_data_t *data, long long *error_code, long *lzap_error_code)
+{
+    bool result = false;
+    json_t *root = NULL;
+    char msg[MAX_TXFIELD];
+
+    // parse the response
+    json_error_t error;
+    root = json_loads(data->ptr, 0, &error);
+    if (!root)
+    {
+        print_json_error("get_waves_node_error_code", &error);
+        goto cleanup;
+    }
+
+    if (!json_is_object(root))
+    {
+        debug_print("get_waves_node_error_code: root is not an object\n");
+        goto cleanup;
+    }
+    if (!get_json_int64_from_object(root, "error", error_code))
+    {
+        debug_print("get_waves_node_error_code: failed to get the error code\n");
+        goto cleanup;
+    }
+    if (!get_json_string_from_object(root, "message", msg, MAX_TXFIELD))
+    {
+        debug_print("get_waves_node_error_code: failed to get the message\n");
+        goto cleanup;
+    }
+
+    if (*error_code == 112)
+    {
+        char *unavail_funds = "State check failed. Reason: Attempt to transfer unavailable funds";
+        if (strcmp(msg, "insufficient fee") == 0)
+            *lzap_error_code = LZAP_ERR_INSUFFICIENT_FEE;
+        else if (strncmp(msg, unavail_funds, strlen(unavail_funds)) == 0)
+            *lzap_error_code = LZAP_ERR_UNAVAILABLE_FUNDS;
+        else
+        {
+            debug_print("get_waves_node_error_code: unrecognised error message: '%s'\n", msg);
+            goto cleanup;
+        }
+    }
+    else
+    {
+        debug_print("get_waves_node_error_code: unrecognised error code: '%lld'\n", *error_code);
+        goto cleanup;
+    }
+
+    result = true;
+
+cleanup:
+    if (root)
+        json_decref(root);
+    return result;
+}
+
 bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx)
 {
     clear_error();
@@ -829,6 +899,7 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadca
     if (!waves_parse_transfer_transaction((const unsigned char*)spend_tx.data, 0, &ttx_bytes))
     {
         debug_print("lzap_transaction_broadcast: failed to parse tx data\n");
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
     }
 
@@ -836,6 +907,7 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadca
     if (!waves_read_transfer_transaction_data(&ttx_bytes, g_network, &ttx_data))
     {
         debug_print("lzap_transaction_broadcast: failed to convert tx bytes\n");
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
     }
     char signature_b58[128];
@@ -847,39 +919,92 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadca
     if (root == NULL)
     {
         debug_print("lzap_transaction_broadcast: failed to create root json object\n");
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
     }
     if (!json_set_string(root, "assetId", (char*)ttx_data.amount_asset_id))
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
+    }
     if (!json_set_string(root, "senderPublicKey", (char*)ttx_data.sender_public_key))
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
+    }
     if (!json_set_string(root, "recipient", (char*)ttx_data.recipient_address_or_alias))
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
+    }
     if (!json_set_int64(root, "fee", ttx_data.fee))
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
+    }
     if (!json_set_string(root, "feeAssetId", (char*)ttx_data.fee_asset_id))
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
+    }
     if (!json_set_int64(root, "amount", ttx_data.amount))
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
+    }
     if (!json_set_string(root, "attachment", (char*)ttx_data.attachment))
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
+    }
     if (!json_set_int64(root, "timestamp", ttx_data.timestamp))
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
+    }
     if (!json_set_string(root, "signature", signature_b58))
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
+    }
     json_data = json_dumps(root, 0);
     if (json_data == NULL)
     {
         debug_print("lzap_transaction_broadcast: failed to create json_data \n");
+        set_error(LZAP_ERR_UNSPECIFIED);
         goto cleanup;
     }
     debug_print("lzap_transaction_broadcast: json_data '%s'\n", json_data);
 
     // now broadcast the data
+    long response_code;
     struct curl_data_t data = {};
     char *endpoint = "/assets/broadcast/transfer";
-    if (!post_waves_endpoint(endpoint, json_data, &data))
+    if (!post_waves_endpoint(endpoint, json_data, &response_code, &data))
+    {
+        if (response_code == 0)
+            set_error(LZAP_ERR_NETWORK_UNREACHABLE);
+        else if (response_code == 400)
+        {
+            printf("hahahah!!!\n");
+            debug_print("lzap_transaction_broadcast: failed to broadcast tx (http response code: 400)\n");
+            long long waves_node_error_code;
+            long lzap_error_code;
+            if (get_waves_node_error_code(&data, &waves_node_error_code, &lzap_error_code))
+            {
+                debug_print("lzap_transaction_broadcast: waves node error code - %lld\n", waves_node_error_code);
+                set_error(lzap_error_code);
+            }
+            else
+                set_error(LZAP_ERR_UNSPECIFIED);
+        }
+        else
+        {
+            debug_print("lzap_transaction_broadcast: failed to broadcast tx (waves node response code: %ld)\n", response_code);
+            set_error(LZAP_ERR_UNSPECIFIED);
+        }
         goto cleanup;
+    }
     json_decref(root);
     root = NULL;
     free(json_data);
