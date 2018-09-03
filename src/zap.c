@@ -45,6 +45,8 @@ struct curl_data_t
 // -- Library globals --
 //
 
+int g_error_code = LZAP_ERR_NONE;
+char *g_error_msg = "";
 char g_network = TESTNET_NETWORK_BYTE;
 char g_network_host[1024] = {};
 
@@ -269,22 +271,64 @@ bool zap_securehash(void *digest, const void *data, size_t datasz)
     return true;
 }
 
+void clear_error()
+{
+    g_error_code = LZAP_ERR_NONE;
+    g_error_msg = "";
+}
+
+void set_error(int code)
+{
+    g_error_code = code;
+    switch (code)
+    {
+        case LZAP_ERR_NONE:
+            g_error_msg = "";
+            break;
+        case LZAP_ERR_INVALID_NETWORK:
+            g_error_msg = "\"invalid network\": network was not \"W\" or \"T\".";
+            break;
+        case LZAP_ERR_NETWORK_UNREACHABLE:
+            g_error_msg = "\"network unreachable\": The set Waves node could not be reached (see \"nodeSet\".";
+            break;
+        case LZAP_ERR_INVALID_ADDRESS:
+            g_error_msg = "\"invalid address\": address is not a valid Waves address";
+            break;
+        case LZAP_ERR_INVALID_ATTACHMENT:
+            g_error_msg = "\"invalid attachment\": attachment is longer then 140 characters";
+        case LZAP_ERR_UNSPECIFIED:
+        default:
+            g_error_msg = "\"unspecfied error\"";
+            break;
+    }
+}
+
 //
 // -- PUBLIC FUNCTIONS --
 //
 
+void lzap_error(int *code, const char **msg)
+{
+    *code = g_error_code;
+    *msg = g_error_msg;
+    clear_error();
+}
+
 int lzap_version()
 {
+    clear_error();
     return 1;
 }
 
 const char* lzap_node_get()
 {
+    clear_error();
     return network_host();
 }
 
 void lzap_node_set(const char *url)
 {
+    clear_error();
     if (!url)
         memset(g_network_host, 0, sizeof(g_network_host));
     else
@@ -296,17 +340,25 @@ void lzap_node_set(const char *url)
 
 char lzap_network_get()
 {
+    clear_error();
     return g_network;
 }
 
-void lzap_network_set(char network_byte)
+bool lzap_network_set(char network_byte)
 {
+    clear_error();
     g_network = network_byte;
-    assert(g_network == TESTNET_NETWORK_BYTE || g_network == MAINNET_NETWORK_BYTE);
+    if (g_network != TESTNET_NETWORK_BYTE && g_network != MAINNET_NETWORK_BYTE)
+    {
+        set_error(LZAP_ERR_INVALID_NETWORK);
+        return false;
+    }
+    return true;
 }
 
 bool lzap_mnemonic_create(char *output, size_t size)
 {
+    clear_error();
     const char *mnemonic = mnemonic_generate(128);
     if (mnemonic == NULL)
     {
@@ -325,21 +377,25 @@ bool lzap_mnemonic_create(char *output, size_t size)
 
 bool lzap_mnemonic_check(const char *mnemonic)
 {
+    clear_error();
     return mnemonic_check(mnemonic);
 }
 
 const char* const* lzap_mnemonic_wordlist()
 {
+    clear_error();
     return mnemonic_wordlist();
 }
 
 void lzap_seed_address(const char *seed, char *output)
 {
-    waves_seed_to_address(seed, g_network, output);
+    clear_error();
+    waves_seed_to_address((const unsigned char*)seed, g_network, (unsigned char*)output);
 }
 
 struct int_result_t lzap_address_check(const char *address)
 {
+    clear_error();
     struct int_result_t result = {};
 
     // decode base58 address
@@ -412,12 +468,28 @@ bool get_json_int64_from_object(json_t *object, const char *field_name, long lon
 
 struct int_result_t lzap_address_balance(const char *address)
 {
+    clear_error();
     struct int_result_t balance = { false, 0 };
 
+    // check address
+    struct int_result_t chk = lzap_address_check(address);
+    if (!chk.success || !chk.value)
+    {
+        debug_print("lzap_address_balance: invalid address\n");
+        set_error(LZAP_ERR_INVALID_ADDRESS);
+        return balance;
+    }
+
+    // build endpoint url
     char endpoint[MAX_URL];
     int res = snprintf(endpoint, MAX_URL, "/assets/balance/%s/%s", address, network_assetid());
     if (res < 0 || res >= MAX_URL)
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         return balance;
+    }
+
+    // call curl
     struct curl_data_t data;
     if (get_waves_endpoint(endpoint, &data))
     {
@@ -427,16 +499,19 @@ struct int_result_t lzap_address_balance(const char *address)
         if (!root)
         {
             print_json_error("lzap_address_balance", &error);
+            set_error(LZAP_ERR_UNSPECIFIED);
             return balance;
         }
         if (!json_is_object(root))
         {
             debug_print("lzap_address_balance: json root is not an object\n");
+            set_error(LZAP_ERR_UNSPECIFIED);
             goto cleanup;
         }
         if (!get_json_int64_from_object(root, "balance", &balance.value))
         {
             debug_print("lzap_address_balance: failed to get balance\n");
+            set_error(LZAP_ERR_UNSPECIFIED);
             goto cleanup;
         }
         balance.success = true;
@@ -444,6 +519,8 @@ cleanup:
         json_decref(root);
         return balance;
     }
+    else
+        set_error(LZAP_ERR_NETWORK_UNREACHABLE);
     return balance;
 }
 
@@ -504,8 +581,19 @@ bool tx_from_json(json_t *tx_object, struct tx_t *tx)
 
 struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count)
 {
+    clear_error();
     struct int_result_t result = { false, 0 };
 
+    // check address
+    struct int_result_t chk = lzap_address_check(address);
+    if (!chk.success || !chk.value)
+    {
+        debug_print("lzap_address_transactions: invalid address\n");
+        set_error(LZAP_ERR_INVALID_ADDRESS);
+        return result;
+    }
+
+    // construct endpoint url
     char endpoint[MAX_URL];
     int res = snprintf(endpoint, MAX_URL, "/transactions/address/%s/limit/%d", address, count);
     if (res < 0 || res >= MAX_URL)
@@ -526,7 +614,7 @@ struct int_result_t lzap_address_transactions(const char *address, struct tx_t *
             debug_print("lzap_address_transactions: json root is not an array\n");
             goto cleanup;
         }
-        if (!json_array_size(root) == 1)
+        if (json_array_size(root) != 1)
         {
             debug_print("lzap_address_transactions: json root array is not of size 1\n");
             goto cleanup;
@@ -552,11 +640,14 @@ cleanup:
         json_decref(root);
         return result;
     }
+    else
+        set_error(LZAP_ERR_NETWORK_UNREACHABLE);
     return result;
 }
 
 struct int_result_t lzap_transaction_fee()
 {
+    clear_error();
     struct int_result_t result = { false, 0 };
 
     // first get the asset info
@@ -601,18 +692,38 @@ cleanup:
         json_decref(root);
         return result;
     }
+    else
+        set_error(LZAP_ERR_NETWORK_UNREACHABLE);
     return result;
 
 }
 
 struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment)
 {
+    clear_error();
     struct spend_tx_t result = {};
+
+    // check address
+    struct int_result_t chk = lzap_address_check(recipient);
+    if (!chk.success || !chk.value)
+    {
+        debug_print("lzap_transaction_create: invalid address\n");
+        set_error(LZAP_ERR_INVALID_ADDRESS);
+        return result;
+    }
+
+    // check attachment size
+    if (strlen(attachment) > 140)
+    {
+        debug_print("lzap_transaction_create: attachment too large\n");
+        set_error(LZAP_ERR_INVALID_ATTACHMENT);
+        return result;
+    }
 
     // get private and public key
     curve25519_secret_key privkey;
     curve25519_public_key pubkey;
-    waves_seed_to_privkey(seed, privkey, pubkey); 
+    waves_seed_to_privkey((const unsigned char*)seed, privkey, (unsigned char*)pubkey); 
 
     // decode base58 recipient
     char recipient_bytes[26] = {};
@@ -669,14 +780,14 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     }
 
     // convert to byte array
-    if (!waves_transfer_transaction_to_bytes(&tx, result.data, &result.data_size, 0))
+    if (!waves_transfer_transaction_to_bytes(&tx, (unsigned char*)result.data, &result.data_size, 0))
     {
         debug_print("lzap_transaction_create: failed to convert to bytes\n");
         return result;
     }
 
     // sign tx
-    if (!waves_message_sign(&privkey, result.data, result.data_size, result.signature))
+    if (!waves_message_sign(&privkey, (const unsigned char*)result.data, result.data_size, (unsigned char*)result.signature))
     {
         debug_print("lzap_transaction_create: failed to create signature\n");
         return result;
@@ -708,13 +819,14 @@ bool json_set_int64(json_t *object, char *field, long long value)
 
 bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx)
 {
+    clear_error();
     bool result = false;
     char *json_data = NULL;
     json_t *root = NULL;
 
     // first parse the transaction and encode the strings to base58
     TransferTransactionsBytes ttx_bytes;
-    if (!waves_parse_transfer_transaction(spend_tx.data, 0, &ttx_bytes))
+    if (!waves_parse_transfer_transaction((const unsigned char*)spend_tx.data, 0, &ttx_bytes))
     {
         debug_print("lzap_transaction_broadcast: failed to parse tx data\n");
         goto cleanup;
@@ -737,19 +849,19 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadca
         debug_print("lzap_transaction_broadcast: failed to create root json object\n");
         goto cleanup;
     }
-    if (!json_set_string(root, "assetId", ttx_data.amount_asset_id))
+    if (!json_set_string(root, "assetId", (char*)ttx_data.amount_asset_id))
         goto cleanup;
-    if (!json_set_string(root, "senderPublicKey", ttx_data.sender_public_key))
+    if (!json_set_string(root, "senderPublicKey", (char*)ttx_data.sender_public_key))
         goto cleanup;
-    if (!json_set_string(root, "recipient", ttx_data.recipient_address_or_alias))
+    if (!json_set_string(root, "recipient", (char*)ttx_data.recipient_address_or_alias))
         goto cleanup;
     if (!json_set_int64(root, "fee", ttx_data.fee))
         goto cleanup;
-    if (!json_set_string(root, "feeAssetId", ttx_data.fee_asset_id))
+    if (!json_set_string(root, "feeAssetId", (char*)ttx_data.fee_asset_id))
         goto cleanup;
     if (!json_set_int64(root, "amount", ttx_data.amount))
         goto cleanup;
-    if (!json_set_string(root, "attachment", ttx_data.attachment))
+    if (!json_set_string(root, "attachment", (char*)ttx_data.attachment))
         goto cleanup;
     if (!json_set_int64(root, "timestamp", ttx_data.timestamp))
         goto cleanup;
@@ -806,6 +918,7 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
     //TODO!!!:
     // use curl_easy_escape on all values
 
+    clear_error();
     bool result = false;
     char local_uri[1024] = {};
     memset(req, 0, sizeof(*req));
@@ -878,6 +991,7 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
 
 bool lzap_b58_enc(void *src, size_t src_sz, char *dst, size_t dst_sz)
 {
+    clear_error();
     memset(dst, 0, dst_sz);
     return b58enc(dst, &dst_sz, src, src_sz);
 }
