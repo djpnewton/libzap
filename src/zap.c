@@ -286,26 +286,32 @@ void set_error(int code)
             g_error_msg = "";
             break;
         case LZAP_ERR_INVALID_NETWORK:
-            g_error_msg = "\"invalid network\": network was not \"W\" or \"T\".";
+            g_error_msg = "invalid network";
             break;
         case LZAP_ERR_NETWORK_UNREACHABLE:
-            g_error_msg = "\"network unreachable\": The set Waves node could not be reached (see \"nodeSet\").";
+            g_error_msg = "network unreachable";
             break;
         case LZAP_ERR_INVALID_ADDRESS:
-            g_error_msg = "\"invalid address\": address is not a valid Waves address";
+            g_error_msg = "invalid address";
             break;
         case LZAP_ERR_INVALID_ATTACHMENT:
-            g_error_msg = "\"invalid attachment\": attachment is longer then 140 characters";
+            g_error_msg = "invalid attachment";
             break;
         case LZAP_ERR_UNAVAILABLE_FUNDS:
-            g_error_msg = "\"unavailable funds\": transaction leads to negative asset balance";
+            g_error_msg = "unavailable funds";
             break;
         case LZAP_ERR_INSUFFICIENT_FEE:
-            g_error_msg = "\"insufficient fee\"";
+            g_error_msg = "insufficient fee";
+            break;
+        case LZAP_ERR_INVALID_WAVES_URI:
+            g_error_msg = "invalid waves uri";
+            break;
+        case LZAP_ERR_INVALID_ASSET_ID:
+            g_error_msg = "invalid asset id";
             break;
         case LZAP_ERR_UNSPECIFIED:
         default:
-            g_error_msg = "\"unspecfied error\"";
+            g_error_msg = "unspecfied error";
             break;
     }
 }
@@ -1050,7 +1056,10 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
 
     // copy uri so we can modify it
     if (strlen(uri) >= sizeof(local_uri))
+    {
+        set_error(LZAP_ERR_UNSPECIFIED);
         return false;
+    }
     strncpy(local_uri, uri, sizeof(local_uri)-1);
 
     // check for "waves://" prefix
@@ -1058,11 +1067,13 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
     if (uri_len < 8)
     {
         debug_print("lzap_uri_parse: uri too short");
+        set_error(LZAP_ERR_INVALID_WAVES_URI);
         return false;
     }
     if (strcasestr(local_uri, "waves://") != local_uri)
     {
         debug_print("lzap_uri_parse: uri ('%s') does not match 'waves://'", local_uri);
+        set_error(LZAP_ERR_INVALID_WAVES_URI);
         return false;
     }
     char *start = local_uri + 8;
@@ -1101,6 +1112,7 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
     if (!chk.success || !chk.value)
     {
         debug_print("lzap_uri_parse: invalid address\n");
+        set_error(LZAP_ERR_INVALID_WAVES_URI);
         return false;
     }
 
@@ -1108,6 +1120,7 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
     if (strcmp(req->asset_id, network_assetid()) != 0)
     {
         debug_print("lzap_uri_parse: invalid asset id (should be '%s')\n", network_assetid());
+        set_error(LZAP_ERR_INVALID_ASSET_ID);
         return false;
     }
 

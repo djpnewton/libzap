@@ -134,6 +134,18 @@ bool set_jni_object_long(JNIEnv *env, jobject obj, char *name, long long val)
 // -- Public functions --
 //
 
+JNIEXPORT jint JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_error(JNIEnv* env, jobject thiz,
+    jobjectArray msg_out)
+{
+    int c_code;
+    const char *c_msg;
+    lzap_error(&c_code, &c_msg);
+    // return msg and code
+    jstring msg = (*env)->NewStringUTF(env, c_msg);
+    (*env)->SetObjectArrayElement(env, msg_out, 0, msg);
+    return c_code;
+}
+
 JNIEXPORT jint JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_version(JNIEnv* env, jobject thiz)
 {
     return lzap_version();
@@ -161,10 +173,10 @@ JNIEXPORT jchar JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_network_1get(
 }
 
 
-JNIEXPORT void JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_network_1set(
+JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_network_1set(
     JNIEnv* env, jobject thiz, jchar network_byte)
 {
-    lzap_network_set(network_byte);
+    return lzap_network_set(network_byte);
 }
 
 JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1create(
