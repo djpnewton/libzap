@@ -53,6 +53,8 @@ struct waves_payment_request_t
 #define LZAP_ERR_INVALID_ASSET_ID 8
 #define LZAP_ERR_UNSPECIFIED -1
 
+#define LZAP_VERSION 2
+
 #ifdef __cplusplus
 extern "C" {
 #endif

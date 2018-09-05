@@ -330,7 +330,7 @@ void lzap_error(int *code, const char **msg)
 int lzap_version()
 {
     clear_error();
-    return 1;
+    return LZAP_VERSION;
 }
 
 const char* lzap_node_get()
