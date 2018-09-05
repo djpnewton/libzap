@@ -1,4 +1,0 @@
-libzap = interface +c {
-    static lzap_version(): i32;
-    lzap_seed_to_address(key: string, network_byte: i8, output: string);
-}
