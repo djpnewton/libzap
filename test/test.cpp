@@ -64,8 +64,10 @@ int main(int argc, char *argv[])
     args::ValueFlag<std::string> address_opt_check(check, "address", "address to input", {'a'});
     args::Command balance(commands, "balance", "balance of an address");
     args::ValueFlag<std::string> address_opt_balance(balance, "address", "address to input", {'a'});
+    args::ValueFlag<std::string> seed_opt_balance(balance, "seed", "seed to input", {'s'});
     args::Command transactions(commands, "transactions", "transactions of an address");
     args::ValueFlag<std::string> address_opt_txs(transactions, "address", "address to input", {'a'});
+    args::ValueFlag<std::string> seed_opt_txs(transactions, "seed", "seed to input", {'s'});
     args::Command create(commands, "create", "create spend transaction for an address");
     args::ValueFlag<std::string> seed_opt_create(create, "seed", "address to input", {'s'});
     args::ValueFlag<long> amount_top_create(create, "amount", "amount to send", {'a'});
@@ -168,19 +170,35 @@ int main(int argc, char *argv[])
         else if (balance)
         {
             // address balance
-            auto address = args::get(address_opt_balance).c_str();
+            char address_[1024] = {};
+            const char *address = address_;
+            if (address_opt_balance)
+                address = args::get(address_opt_balance).c_str();
+            else if (seed_opt_balance)
+            {
+                auto seed = args::get(seed_opt_balance).c_str();
+                lzap_seed_address(seed, address_);
+            }
             struct int_result_t result = lzap_address_balance(address);
             print_lzap_error();
-            printf("address balance success: %d\naddress balance value: %lld\n", result.success, result.value);
+            printf("address: %s\naddress balance success: %d\naddress balance value: %lld\n", address, result.success, result.value);
         }
         else if (transactions)
         {
             // address transactions 
-            auto address = args::get(address_opt_txs).c_str();
+            char address_[1024] = {};
+            const char *address = address_;
+            if (address_opt_txs)
+                address = args::get(address_opt_txs).c_str();
+            else if (seed_opt_txs)
+            {
+                auto seed = args::get(seed_opt_txs).c_str();
+                lzap_seed_address(seed, address_);
+            }
             struct tx_t txs[100];
             struct int_result_t result = lzap_address_transactions(address, txs, 100);
             print_lzap_error();
-            printf("address transactions success: %d\n", result.success);
+            printf("address: %s\naddress transactions success: %d\n", address, result.success);
             if (result.success)
             {
                 for (int i = 0; i < result.value; i++)
