@@ -1046,9 +1046,6 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
     // parse waves uri in the style of
     //     "waves://<address>?asset=<assetid>&amount=<amount>&attachment=<attachment>"
 
-    //TODO!!!:
-    // use curl_easy_escape on all values
-
     clear_error();
     bool result = false;
     char local_uri[1024] = {};
@@ -1101,7 +1098,27 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
             if (strcasecmp(param_name, "amount") == 0)
                 req->amount = atoll(param_value);
             if (strcasecmp(param_name, "attachment") == 0)
-                strncpy(req->attachment, param_value, sizeof(req->attachment)-1);
+            {
+                // unescape value in attachment
+                CURL *curl = curl_easy_init();
+                if (!curl)
+                {
+                    debug_print("lzap_uri_parse: unable to init curl\n");
+                    set_error(LZAP_ERR_UNSPECIFIED);
+                    return false;
+                }
+                char *unescaped_param_value = curl_easy_unescape(curl, param_value, 0, NULL);
+                if (!unescaped_param_value)
+                {
+                    curl_easy_cleanup(curl);
+                    debug_print("lzap_uri_parse: unable to unescape the parameter value\n");
+                    set_error(LZAP_ERR_UNSPECIFIED);
+                    return false;
+                }
+                strncpy(req->attachment, unescaped_param_value, sizeof(req->attachment)-1);
+                curl_free(unescaped_param_value);
+                curl_easy_cleanup(curl);
+            }
 
             query_param = strtok_r(NULL, "&", &saveptr_qs);
         }
