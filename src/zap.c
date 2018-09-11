@@ -1041,7 +1041,6 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadca
             set_error(LZAP_ERR_NETWORK_UNREACHABLE);
         else if (response_code == 400)
         {
-            printf("hahahah!!!\n");
             debug_print("lzap_transaction_broadcast: failed to broadcast tx (http response code: 400)\n");
             long long waves_node_error_code;
             long lzap_error_code;
