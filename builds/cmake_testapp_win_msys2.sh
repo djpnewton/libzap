@@ -7,7 +7,9 @@ set -e
 #                    git unzip \
 #                    mingw-w64-x86_64-cmake
 
-wget -nc https://github.com/akheron/jansson/archive/v2.11.zip -O ..deps/jansson_v2.11.zip
-unzip ../deps/jansson_v2.11.zip -d ..deps/
+wget -nc https://github.com/akheron/jansson/archive/v2.11.zip -O ../deps/jansson_v2.11.zip
+unzip ../deps/jansson_v2.11.zip -d ../deps/
 
-cmake -G "MSYS Makefiles" .
+mkdir -p win
+
+(cd win; cmake -G "MSYS Makefiles" ../../test)

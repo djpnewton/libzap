@@ -14,6 +14,7 @@ deps/jansson_v2.11.zip
 deps/jansson-*
 builds/mac
 builds/linux
+builds/win
 builds/android
 builds/ndk_build
 builds/ios
