@@ -15,6 +15,10 @@ echo $machine
 if [ "$machine" == "Mac" ]; then
     brew install cmake
     brew install wget
+elif [ "$machine" == "MinGw" ]; then
+    pacman -S --needed base-devel mingw-w64-x86_64-toolchain \
+                    git unzip \
+                    mingw-w64-x86_64-cmake
 else
     apt install cmake
     apt install libssl-dev
