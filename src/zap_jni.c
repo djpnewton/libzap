@@ -239,6 +239,8 @@ JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1balance(
 
 bool populate_jni_tx(JNIEnv* env, jobject jni_tx, struct tx_t *tx)
 {
+    if (!set_jni_object_long(env, jni_tx, "Type", tx->type))
+        return false;
     if (!set_jni_object_str(env, jni_tx, "Id", tx->id))
         return false;
     if (!set_jni_object_str(env, jni_tx, "Sender", tx->sender))

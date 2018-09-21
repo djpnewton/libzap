@@ -593,6 +593,11 @@ bool tx_from_json(json_t *tx_object, struct tx_t *tx)
         debug_print("tx_from_json: tx_object is not an object\n");
         return false;
     }
+    if (!get_json_int64_from_object(tx_object, "type", &tx->type))
+    {
+        debug_print("tx_from_json: failed to get tx type\n");
+        return false;
+    }
     if (!get_json_string_from_object(tx_object, "id", tx->id, MAX_TXFIELD))
     {
         debug_print("tx_from_json: failed to get tx id\n");
@@ -606,27 +611,27 @@ bool tx_from_json(json_t *tx_object, struct tx_t *tx)
     if (!get_json_string_from_object(tx_object, "recipient", tx->recipient, MAX_TXFIELD))
     {
         debug_print("tx_from_json: failed to get tx recipient\n");
-        return false;
+        strcpy(tx->recipient, "unknown");
     }
     if (!get_json_string_from_object(tx_object, "assetId", tx->asset_id, MAX_TXFIELD))
     {
         debug_print("tx_from_json: failed to get tx asset_id\n");
-        return false;
+        strcpy(tx->asset_id, "unknown");
     }
     if (!get_json_string_from_object(tx_object, "feeAsset", tx->fee_asset, MAX_TXFIELD))
     {
         debug_print("tx_from_json: failed to get tx fee_asset\n");
-        return false;
+        strcpy(tx->fee_asset, "unknown");
     }
     if (!get_json_string_from_object(tx_object, "attachment", tx->attachment, MAX_TXFIELD))
     {
         debug_print("tx_from_json: failed to get tx attachment\n");
-        return false;
+        strcpy(tx->attachment, "unknown");
     }
     if (!get_json_int64_from_object(tx_object, "amount", &tx->amount))
     {
         debug_print("tx_from_json: failed to get tx amount\n");
-        return false;
+        tx->amount = 0;
     }
     if (!get_json_int64_from_object(tx_object, "fee", &tx->fee))
     {

@@ -15,12 +15,15 @@ void print_hex(unsigned char *buf, size_t sz)
 
 void print_tx(struct tx_t tx, int i)
 {
-    printf("  tx-%d\n    id: %s\n    sender: %s\n    recipient: %s\n",
-        i, tx.id, tx.sender, tx.recipient);
-    printf("    asset id: %s\n    fee asset: %s\n    attachment: %s\n",
-        tx.asset_id, tx.fee_asset, tx.attachment);
-    printf("    amount: %lld\n    fee: %lld\n    timestamp: %lld\n",
-        tx.amount, tx.fee, tx.timestamp);
+    printf("  tx-%d\n    type: %lld\n    id: %s\n    sender: %s\n", i, tx.type, tx.id, tx.sender);
+    if (tx.type == 4)
+    {
+        printf("    recipient: %s\n    asset id: %s\n", tx.recipient, tx.asset_id);
+        printf("    fee asset: %s\n    attachment: %s\n", tx.fee_asset, tx.attachment);
+        printf("    amount: %lld\n", tx.amount);
+    }
+    printf("    fee: %lld\n    timestamp: %lld\n",
+        tx.fee, tx.timestamp);
 }
 
 void print_lzap_error()

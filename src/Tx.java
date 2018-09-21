@@ -2,6 +2,7 @@ package com.djpsoft.zap.plugin;
 
 public final class Tx {
 
+    public long Type;
     public String Id;
     public String Sender;
     public String Recipient;
@@ -18,7 +19,8 @@ public final class Tx {
     @Override
     public String toString() {
         return "Tx{" +
-                "Sender=" + Sender +
+                "Type=" + Type +
+                "  Sender=" + Sender +
                 ", Recipient=" + Recipient +
                 ", Amount=" + Amount +
                 ", AssetId=" + AssetId +

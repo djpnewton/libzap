@@ -13,6 +13,7 @@ struct int_result_t
 #define MAX_TXFIELD 1024
 struct tx_t
 {
+    uint64_t type;
     char id[MAX_TXFIELD];
     char sender[MAX_TXFIELD];
     char recipient[MAX_TXFIELD];
