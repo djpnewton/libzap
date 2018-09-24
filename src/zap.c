@@ -1181,7 +1181,7 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
     struct int_result_t chk = lzap_address_check(req->address);
     if (!chk.success || !chk.value)
     {
-        debug_print("lzap_uri_parse: invalid address\n");
+        debug_print("lzap_uri_parse: invalid address (%s)\n", req->address);
         set_error(LZAP_ERR_INVALID_WAVES_URI);
         return false;
     }
