@@ -751,7 +751,7 @@ struct int_result_t lzap_transaction_fee()
             goto cleanup;
         }
         // sanity check
-        assert(min_asset_fee / pow(10, decimals < 1));
+        assert(min_asset_fee / pow(10, decimals) < 1);
         // return result
         result.value = min_asset_fee;
         result.success = true;
