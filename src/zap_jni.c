@@ -225,6 +225,18 @@ JNIEXPORT jstring JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_seed_1address(
     return (*env)->NewStringUTF(env, output);
 }
 
+JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1check(
+    JNIEnv* env, jobject thiz, jstring address)
+{
+    // create c compatible structures
+    const char *c_address = (*env)->GetStringUTFChars(env, address, 0);
+    // get result
+    struct int_result_t result = lzap_address_check(c_address);
+    // create java class to return result
+    debug_print("address_check: %s, %d, %lld", c_address, result.success, result.value);
+    return create_jni_int_result(env, result);
+}
+
 JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1balance(
     JNIEnv* env, jobject thiz, jstring address)
 {
