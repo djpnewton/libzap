@@ -25,7 +25,7 @@
 #define MAINNET_HOST "https://nodes.wavesnodes.com"
 
 #define TESTNET_ASSETID "CgUrFtinLXEbJwJVjwwcppk4Vpz1nMmR3H5cQaDcUcfe"
-#define MAINNET_ASSETID "nada"
+#define MAINNET_ASSETID "9R3iLi4qGLVWKc16Tg98gmRvgg1usGEYd7SgC1W5D6HB"
 
 //
 // -- Implementation details -- 
