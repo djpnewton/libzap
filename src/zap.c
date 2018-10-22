@@ -27,6 +27,8 @@
 #define TESTNET_ASSETID "CgUrFtinLXEbJwJVjwwcppk4Vpz1nMmR3H5cQaDcUcfe"
 #define MAINNET_ASSETID "9R3iLi4qGLVWKc16Tg98gmRvgg1usGEYd7SgC1W5D6HB"
 
+#define ADDRESS_VERSION 1
+
 //
 // -- Implementation details -- 
 //
@@ -475,6 +477,20 @@ struct int_result_t lzap_address_check(const char *address)
     if (b58chk < 0)
     {
         debug_print("lzap_transaction_check: error checking base58 decoded address (%d)\n", b58chk);
+        return result;
+    }
+
+    // check address version
+    if (address_bytes[0] != ADDRESS_VERSION)
+    {
+        debug_print("lzap_transaction_check: address has wrong version (%d)\n", address_bytes[0]);
+        return result;
+    }
+
+    // check chain ID
+    if (address_bytes[1] != g_network)
+    {
+        debug_print("lzap_transaction_check: address has wrong chain ID (%d)\n", address_bytes[1]);
         return result;
     }
 
