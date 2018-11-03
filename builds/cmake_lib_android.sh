@@ -21,7 +21,9 @@ else
 fi
 MAKE=make
 CMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake
-ANDROID_ABI=armeabi-v7a
+if [[ -z "${ANDROID_ABI}" ]]; then
+  ANDROID_ABI=armeabi-v7a
+fi
 ANDROID_API=18
 DEPS=../deps
 OPENSSL_ROOT_DIR=$DEPS/android/openssl/$ANDROID_ABI
@@ -52,7 +54,7 @@ mkdir -p android
 
 cmake "-GUnix Makefiles" \
     -DJANSSON_BUILD_DOCS=OFF \
-    -DCMAKE_C_FLAGS=-std=c11 \
+    -DCMAKE_C_FLAGS=-std=gnu11 \
     -DOPENSSL_ROOT_DIR=$OPENSSL_ROOT_DIR -DOPENSSL_INCLUDE_DIR=$OPENSSL_ROOT_DIR/include \
     -DOPENSSL_CRYPTO_LIBRARY=$OPENSSL_ROOT_DIR/lib/libcrypto.a -DOPENSSL_SSL_LIBRARY=$OPENSSL_ROOT_DIR/lib/libssl.a \
     -DCURL_LIBRARY=$LIBCURL_ROOT_DIR/$ANDROID_ABI/libcurl.a -DCURL_INCLUDE_DIR=$LIBCURL_ROOT_DIR/include \
