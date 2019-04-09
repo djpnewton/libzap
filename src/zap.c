@@ -701,6 +701,13 @@ bool tx_from_json(json_t *tx_object, struct tx_t *tx)
 
 struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count)
 {
+    return lzap_address_transactions2(address, txs, count, NULL);
+}
+
+struct int_result_t lzap_address_transactions2(const char *address, struct tx_t *txs, int count, const char *after)
+{
+    debug_print("lzap_address_transactions2: %s, %d, %s\n", address, count, after);
+
     clear_error();
     struct int_result_t result = { false, 0 };
 
@@ -708,16 +715,21 @@ struct int_result_t lzap_address_transactions(const char *address, struct tx_t *
     struct int_result_t chk = lzap_address_check(address);
     if (!chk.success || !chk.value)
     {
-        debug_print("lzap_address_transactions: invalid address\n");
+        debug_print("lzap_address_transactions2: invalid address\n");
         set_error(LZAP_ERR_INVALID_ADDRESS);
         return result;
     }
 
     // construct endpoint url
     char endpoint[MAX_URL];
-    int res = snprintf(endpoint, MAX_URL, "/transactions/address/%s/limit/%d", address, count);
+    int res;
+    if (after)
+        res = snprintf(endpoint, MAX_URL, "/transactions/address/%s/limit/%d?after=%s", address, count, after);
+    else
+        res = snprintf(endpoint, MAX_URL, "/transactions/address/%s/limit/%d", address, count);
     if (res < 0 || res >= MAX_URL)
         return result;
+    debug_print("lzap_address_transactions2: calling %s\n", endpoint);
     struct curl_data_t data;
     if (get_waves_endpoint(endpoint, &data))
     {
@@ -726,23 +738,23 @@ struct int_result_t lzap_address_transactions(const char *address, struct tx_t *
         root = json_loads(data.ptr, 0, &error);
         if (!root)
         {
-            print_json_error("lzap_address_transactions", &error);
+            print_json_error("lzap_address_transactions2", &error);
             return result;
         }
         if (!json_is_array(root))
         {
-            debug_print("lzap_address_transactions: json root is not an array\n");
+            debug_print("lzap_address_transactions2: json root is not an array\n");
             goto cleanup;
         }
         if (json_array_size(root) != 1)
         {
-            debug_print("lzap_address_transactions: json root array is not of size 1\n");
+            debug_print("lzap_address_transactions2: json root array is not of size 1\n");
             goto cleanup;
         }
         json_t *tx_array = json_array_get(root, 0);
         if (!json_is_array(tx_array))
         {
-            debug_print("lzap_address_transactions: tx_array is not an array\n");
+            debug_print("lzap_address_transactions2: tx_array is not an array\n");
             goto cleanup;
         }
         for (int i = 0; i < json_array_size(tx_array); i++)
@@ -750,7 +762,7 @@ struct int_result_t lzap_address_transactions(const char *address, struct tx_t *
             json_t *tx_object = json_array_get(tx_array, i);
             if (!tx_from_json(tx_object, &txs[i]))
             {
-                debug_print("lzap_address_transactions: tx_from_json failed\n");
+                debug_print("lzap_address_transactions2: tx_from_json failed\n");
                 goto cleanup;
             }
             result.value = i + 1;

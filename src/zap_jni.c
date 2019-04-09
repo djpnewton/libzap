@@ -275,19 +275,28 @@ bool populate_jni_tx(JNIEnv* env, jobject jni_tx, struct tx_t *tx)
 }
 
 JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_address_1transactions(
-    JNIEnv* env, jobject thiz, jstring address, jobjectArray txs, jint count)
+    JNIEnv* env, jobject thiz, jstring address, jobjectArray txs, jint count, jstring after)
 {
     struct int_result_t result = {false, 0};
     // create c compatible structures
     const char *c_address = (*env)->GetStringUTFChars(env, address, 0);
     struct tx_t *c_txs = malloc(sizeof(struct tx_t) * count);
+    const char *c_after = NULL;
+    if (after)
+    {
+        c_after = (*env)->GetStringUTFChars(env, after, 0);
+        // i think JS nulls get turned into the string "null"
+        if (strcmp(c_after, "null") == 0)
+            c_after = NULL;
+    }
     if (c_txs)
     {
+        debug_print("calling lzap_address_transactions2: %s, %d, %s", c_address, count, c_after);
         // get result
-        result = lzap_address_transactions(c_address, c_txs, count);
+        result = lzap_address_transactions2(c_address, c_txs, count, c_after);
         if (result.success)
         {
-            debug_print("got address transactions: %lld", result.value);
+            debug_print("got address transactions: %lld, %s", result.value, c_after);
             // first we need to populate jni txs
             result.success = false;
             // populate jni txs

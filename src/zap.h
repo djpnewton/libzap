@@ -54,7 +54,7 @@ struct waves_payment_request_t
 #define LZAP_ERR_INVALID_ASSET_ID 8
 #define LZAP_ERR_UNSPECIFIED -1
 
-#define LZAP_VERSION 6
+#define LZAP_VERSION 7
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,6 +72,7 @@ extern "C" {
     struct int_result_t lzap_address_check(const char *address);
     struct int_result_t lzap_address_balance(const char *address);
     struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count);
+    struct int_result_t lzap_address_transactions2(const char *address, struct tx_t *txs, int count, const char *after);
     struct int_result_t lzap_transaction_fee();
     struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment);
     bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx);
