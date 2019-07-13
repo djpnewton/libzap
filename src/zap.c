@@ -536,6 +536,12 @@ struct int_result_t lzap_address_check(const char *address)
     return result;
 }
 
+bool lzap_address_check_ns(const char *address)
+{
+    struct int_result_t result = lzap_address_check(address);
+    return result.success;
+}
+
 bool get_json_string(json_t *string_field, char *target, int max)
 {
     if (!json_is_string(string_field))
@@ -637,6 +643,13 @@ cleanup:
     else
         set_error(LZAP_ERR_NETWORK_UNREACHABLE);
     return balance;
+}
+
+bool lzap_address_balance_ns(const char *address, int64_t *balance_out)
+{
+    struct int_result_t result = lzap_address_balance(address);
+    *balance_out = result.value;
+    return result.success;
 }
 
 bool tx_from_json(json_t *tx_object, struct tx_t *tx)
@@ -777,6 +790,13 @@ cleanup:
     return result;
 }
 
+bool lzap_address_transactions2_ns(const char *address, struct tx_t *txs, int count, const char *after, int64_t *count_out)
+{
+    struct int_result_t result = lzap_address_transactions2(address, txs, count, after);
+    *count_out = result.value;
+    return result.success;
+}
+
 struct int_result_t lzap_transaction_fee()
 {
     clear_error();
@@ -828,6 +848,13 @@ cleanup:
         set_error(LZAP_ERR_NETWORK_UNREACHABLE);
     return result;
 
+}
+
+bool lzap_transaction_fee_ns(int64_t *fee_out)
+{
+    struct int_result_t result = lzap_transaction_fee();
+    *fee_out = result.value;
+    return result.success;
 }
 
 struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment)
@@ -934,6 +961,12 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
     return result;
 }
 
+void lzap_transaction_create_ns(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment, struct spend_tx_t *spend_tx_out)
+{
+    struct spend_tx_t spend_tx = lzap_transaction_create(seed, recipient, amount, fee, attachment);
+    *spend_tx_out = spend_tx;
+}
+
 bool json_set_string(json_t *object, char *field, char *value)
 {
     if (json_object_set_new(object, field, json_string(value)) == -1)
@@ -1012,7 +1045,7 @@ cleanup:
     return result;
 }
 
-bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx)
+bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx_out)
 {
     clear_error();
     bool result = false;
@@ -1145,7 +1178,7 @@ bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadca
         print_json_error("lzap_transaction_broadcast", &error);
         goto cleanup;
     }
-    if (!tx_from_json(root, broadcast_tx))
+    if (!tx_from_json(root, broadcast_tx_out))
     {
         debug_print("lzap_transaction_broadcast: tx_from_json failed\n");
         goto cleanup;
@@ -1159,7 +1192,7 @@ cleanup:
     return result;
 }
 
-bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
+bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req_out)
 {
     // parse waves uri in the style of
     //     "waves://<address>?asset=<assetid>&amount=<amount>&attachment=<attachment>"
@@ -1167,7 +1200,7 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
     clear_error();
     bool result = false;
     char local_uri[1024] = {};
-    memset(req, 0, sizeof(*req));
+    memset(req_out, 0, sizeof(*req_out));
 
     // copy uri so we can modify it
     if (strlen(uri) >= sizeof(local_uri))
@@ -1199,7 +1232,7 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
     char *query_string = strtok_r(NULL, "?", &saveptr);
 
     // copy address
-    strncpy(req->address, address, sizeof(req->address)-1);
+    strncpy(req_out->address, address, sizeof(req_out->address)-1);
 
     // find query parameters
     if (query_string)
@@ -1212,9 +1245,9 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
             char *param_name = strtok_r(query_param, "=", &saveptr_param);
             char *param_value = strtok_r(NULL, "=", &saveptr_param);
             if (strcasecmp(param_name, "asset") == 0)
-                strncpy(req->asset_id, param_value, sizeof(req->asset_id)-1);
+                strncpy(req_out->asset_id, param_value, sizeof(req_out->asset_id)-1);
             if (strcasecmp(param_name, "amount") == 0)
-                req->amount = atoll(param_value);
+                req_out->amount = atoll(param_value);
             if (strcasecmp(param_name, "attachment") == 0)
             {
                 // unescape value in attachment
@@ -1233,7 +1266,7 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
                     set_error(LZAP_ERR_UNSPECIFIED);
                     return false;
                 }
-                strncpy(req->attachment, unescaped_param_value, sizeof(req->attachment)-1);
+                strncpy(req_out->attachment, unescaped_param_value, sizeof(req_out->attachment)-1);
                 curl_free(unescaped_param_value);
                 curl_easy_cleanup(curl);
             }
@@ -1243,16 +1276,16 @@ bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req)
     }
 
     // validate address
-    struct int_result_t chk = lzap_address_check(req->address);
+    struct int_result_t chk = lzap_address_check(req_out->address);
     if (!chk.success || !chk.value)
     {
-        debug_print("lzap_uri_parse: invalid address (%s)\n", req->address);
+        debug_print("lzap_uri_parse: invalid address (%s)\n", req_out->address);
         set_error(LZAP_ERR_INVALID_WAVES_URI);
         return false;
     }
 
     // validate asset_id
-    if (strcmp(req->asset_id, network_assetid()) != 0)
+    if (strcmp(req_out->asset_id, network_assetid()) != 0)
     {
         debug_print("lzap_uri_parse: invalid asset id (should be '%s')\n", network_assetid());
         set_error(LZAP_ERR_INVALID_ASSET_ID);

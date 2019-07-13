@@ -54,7 +54,7 @@ struct waves_payment_request_t
 #define LZAP_ERR_INVALID_ASSET_ID 8
 #define LZAP_ERR_UNSPECIFIED -1
 
-#define LZAP_VERSION 7
+#define LZAP_VERSION 8
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,13 +70,18 @@ extern "C" {
     const char* const* lzap_mnemonic_wordlist();
     void lzap_seed_address(const char *seed, char *output);
     struct int_result_t lzap_address_check(const char *address);
+    bool lzap_address_check_ns(const char *address);
     struct int_result_t lzap_address_balance(const char *address);
+    bool lzap_address_balance_ns(const char *address, int64_t *balance_out);
     struct int_result_t lzap_address_transactions(const char *address, struct tx_t *txs, int count);
     struct int_result_t lzap_address_transactions2(const char *address, struct tx_t *txs, int count, const char *after);
+    bool lzap_address_transactions2_ns(const char *address, struct tx_t *txs, int count, const char *after, int64_t *count_out);
     struct int_result_t lzap_transaction_fee();
+    bool lzap_transaction_fee_ns(int64_t *fee_out);
     struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment);
-    bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx);
-    bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req);
+    void lzap_transaction_create_ns(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment, struct spend_tx_t *spend_tx_out);
+    bool lzap_transaction_broadcast(struct spend_tx_t spend_tx, struct tx_t *broadcast_tx_out);
+    bool lzap_uri_parse(const char *uri, struct waves_payment_request_t *req_out);
 
     bool lzap_b58_enc(void *src, size_t src_sz, char *dst, size_t dst_sz);
 #ifdef __cplusplus
