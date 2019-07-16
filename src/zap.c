@@ -536,12 +536,6 @@ struct int_result_t lzap_address_check(const char *address)
     return result;
 }
 
-bool lzap_address_check_ns(const char *address)
-{
-    struct int_result_t result = lzap_address_check(address);
-    return result.success;
-}
-
 bool get_json_string(json_t *string_field, char *target, int max)
 {
     if (!json_is_string(string_field))
@@ -643,13 +637,6 @@ cleanup:
     else
         set_error(LZAP_ERR_NETWORK_UNREACHABLE);
     return balance;
-}
-
-bool lzap_address_balance_ns(const char *address, int64_t *balance_out)
-{
-    struct int_result_t result = lzap_address_balance(address);
-    *balance_out = result.value;
-    return result.success;
 }
 
 bool tx_from_json(json_t *tx_object, struct tx_t *tx)
@@ -790,13 +777,6 @@ cleanup:
     return result;
 }
 
-bool lzap_address_transactions2_ns(const char *address, struct tx_t *txs, int count, const char *after, int64_t *count_out)
-{
-    struct int_result_t result = lzap_address_transactions2(address, txs, count, after);
-    *count_out = result.value;
-    return result.success;
-}
-
 struct int_result_t lzap_transaction_fee()
 {
     clear_error();
@@ -848,13 +828,6 @@ cleanup:
         set_error(LZAP_ERR_NETWORK_UNREACHABLE);
     return result;
 
-}
-
-bool lzap_transaction_fee_ns(int64_t *fee_out)
-{
-    struct int_result_t result = lzap_transaction_fee();
-    *fee_out = result.value;
-    return result.success;
 }
 
 struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment)
@@ -959,12 +932,6 @@ struct spend_tx_t lzap_transaction_create(const char *seed, const char *recipien
 
     result.success = true;
     return result;
-}
-
-void lzap_transaction_create_ns(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment, struct spend_tx_t *spend_tx_out)
-{
-    struct spend_tx_t spend_tx = lzap_transaction_create(seed, recipient, amount, fee, attachment);
-    *spend_tx_out = spend_tx;
 }
 
 bool json_set_string(json_t *object, char *field, char *value)
@@ -1300,4 +1267,47 @@ bool lzap_b58_enc(void *src, size_t src_sz, char *dst, size_t dst_sz)
     clear_error();
     memset(dst, 0, dst_sz);
     return b58enc(dst, &dst_sz, src, src_sz);
+}
+
+//
+// temporary wrappers while we wait for dart ffi to do its thing re passing structs on the stack
+//
+
+bool lzap_address_check_ns(const char *address)
+{
+    struct int_result_t result = lzap_address_check(address);
+    return result.success;
+}
+
+bool lzap_address_balance_ns(const char *address, int64_t *balance_out)
+{
+    struct int_result_t result = lzap_address_balance(address);
+    *balance_out = result.value;
+    return result.success;
+}
+
+bool lzap_address_transactions2_ns(const char *address, struct tx_t *txs, int count, const char *after, int64_t *count_out)
+{
+    struct int_result_t result = lzap_address_transactions2(address, txs, count, after);
+    *count_out = result.value;
+    return result.success;
+}
+
+bool lzap_transaction_fee_ns(int64_t *fee_out)
+{
+    struct int_result_t result = lzap_transaction_fee();
+    *fee_out = result.value;
+    return result.success;
+}
+
+void lzap_transaction_create_ns(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment, struct spend_tx_t *spend_tx_out)
+{
+    struct spend_tx_t spend_tx = lzap_transaction_create(seed, recipient, amount, fee, attachment);
+    *spend_tx_out = spend_tx;
+}
+
+bool lzap_transaction_broadcast_ns(struct spend_tx_t *spend_tx, struct tx_t *broadcast_tx_out)
+{
+    struct spend_tx_t spend_tx_stack = *spend_tx;
+    return lzap_transaction_broadcast(spend_tx_stack, broadcast_tx_out);
 }
