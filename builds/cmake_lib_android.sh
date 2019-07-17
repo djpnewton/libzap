@@ -33,7 +33,7 @@ JANSSON_ROOT_DIR=$DEPS/jansson-2.11
 if [ ! -d $OPENSSL_ROOT_DIR ]; then
     mkdir -p $DEPS/android
     # from https://www.teskalabs.com/blog/openssl-binary-distribution-for-developers-static-library
-    wget -nc https://getseacatiostoracc.blob.core.windows.net/getseacatio/openssl/openssl-dev-1.0.2o-android.tar.gz -O $DEPS/openssl-android.tar.gz
+    wget -nc https://teskalabs.blob.core.windows.net/openssl/openssl-dev-1.0.2o-android.tar.gz -O $DEPS/openssl-android.tar.gz
     tar xvf $DEPS/openssl-android.tar.gz -C $DEPS/android
 fi
 
