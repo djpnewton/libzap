@@ -4,9 +4,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#pragma pack(push, 1)
 struct int_result_t
 {
-    bool success;
+    uint32_t success;
     int64_t value;
 };
 
@@ -29,9 +30,9 @@ struct tx_t
 #define SIG_SIZE 64
 struct spend_tx_t
 {
-    bool success;
+    uint32_t success;
     char data[MAX_TX_DATA_SIZE];
-    size_t data_size;
+    uint32_t data_size;
     char signature[SIG_SIZE];
 };
 
@@ -42,6 +43,7 @@ struct waves_payment_request_t
     char attachment[MAX_TXFIELD];
     uint64_t amount;
 };
+#pragma pack(pop)
 
 #define LZAP_ERR_NONE 0
 #define LZAP_ERR_INVALID_NETWORK 1
@@ -54,7 +56,7 @@ struct waves_payment_request_t
 #define LZAP_ERR_INVALID_ASSET_ID 8
 #define LZAP_ERR_UNSPECIFIED -1
 
-#define LZAP_VERSION 9
+#define LZAP_VERSION 10
 
 #ifdef __cplusplus
 extern "C" {
