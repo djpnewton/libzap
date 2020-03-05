@@ -25,7 +25,7 @@ if [[ -z "${ANDROID_ABI}" ]]; then
   ANDROID_ABI=armeabi-v7a
 fi
 ANDROID_API=18
-DEPS=../deps
+DEPS=`realpath ../deps`
 OPENSSL_ROOT_DIR=$DEPS/android/openssl/$ANDROID_ABI
 LIBCURL_ROOT_DIR=$DEPS/curl-android-ios-2aead71c1921d87cf7330d2acd581b1307adb1e1/prebuilt-with-ssl/android
 JANSSON_ROOT_DIR=$DEPS/jansson-2.11

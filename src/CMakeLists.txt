@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.14)
 
 # Creates C resources file from files in given directory
 function(create_resources dir output)
@@ -31,6 +31,9 @@ set(BIP39_SOURCE ${BIP39}/bip39.c ${BIP39}/hmac.c ${BIP39}/rand.c ${BIP39}/sha2.
 
 set(SOURCE zap.c)
 set(LIBRARY_TYPE SHARED)
+if (BUILD_STATIC)
+    set(LIBRARY_TYPE STATIC)
+endif()
 
 if (ANDROID)
     create_resources(resources resources.c)
@@ -39,19 +42,26 @@ if (ANDROID)
     set(ZLIB_LIBRARY "-lz")
     find_package(ZLIB REQUIRED)
 endif()
-if (ANDROID OR IOS)
-    include_directories(${CURL_INCLUDE_DIR})
-    include_directories(../deps/jansson-2.11/src)
-    include_directories(../deps/jansson-2.11/android)
-endif()
 if (IOS)
     add_subdirectory(../deps/zlib build/zlib)
     set(ZLIB_LIBRARIES z)
+    set(CURL_LIBRARIES curl)
     set(SECURITY_LIBRARIES "-framework Security")
-    set(LIBRARY_TYPE STATIC)
+endif()
+if (ANDROID OR IOS)
+    include_directories(${CURL_INCLUDE_DIR})
+    include_directories(../deps/jansson-2.12/src)
+    include_directories(../deps/jansson-2.12/android)
+    # use prebuilt curl
+    add_library(curl STATIC IMPORTED SHARED)
+    set_target_properties(curl PROPERTIES IMPORTED_LOCATION 
+        ${CURL_LIBRARY})
+    set(CURL_LIBRARIES "curl") 
+else()
+    # use system curl
+    set(CURL_LIBRARY "-lcurl") 
+    find_package(CURL REQUIRED) 
 endif()
 
-set(CURL_LIBRARY "-lcurl") 
-find_package(CURL REQUIRED) 
 add_library(${PROJECT_NAME} ${LIBRARY_TYPE} ${SOURCE} ${BIP39_SOURCE})
-target_link_libraries(${PROJECT_NAME} waves_c jansson ${ZLIB_LIBRARIES} ${CURL_LIBRARIES} ${LOG_LIBRARIES} ${SECURITY_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} waves_c jansson ${ZLIB_LIBRARIES} curl ${CURL_LIBRARIES} ${LOG_LIBRARIES} ${SECURITY_LIBRARIES})

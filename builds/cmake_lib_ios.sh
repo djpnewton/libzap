@@ -4,15 +4,21 @@ set -e
 
 # get command line params
 sim=$1
+static=$2
 
 MAKE=make
 CMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake
 if [ "$sim" == "sim" ]; then
-    IOS_PLATFORM=SIMULATOR64
+    PLATFORM=SIMULATOR64
 else
-    IOS_PLATFORM=OS
+    PLATFORM=OS
 fi
-DEPS=../deps
+if [ "$static" == "static" ]; then
+    BUILD_STATIC=true
+else
+    BUILD_STATIC=
+fi
+DEPS=`realpath ../deps`
 OPENSSL_ROOT_DIR=$DEPS/ios/openssl
 LIBCURL_ROOT_DIR=$DEPS/curl-android-ios-2aead71c1921d87cf7330d2acd581b1307adb1e1/prebuilt-with-ssl/iOS
 JANSSON_ROOT_DIR=$DEPS/jansson-2.12
@@ -46,5 +52,6 @@ cmake \
     -DOPENSSL_CRYPTO_LIBRARY=$OPENSSL_ROOT_DIR/lib/libcrypto.a -DOPENSSL_SSL_LIBRARY=$OPENSSL_ROOT_DIR/lib/libssl.a \
     -DCURL_LIBRARY=$LIBCURL_ROOT_DIR/libcurl.a -DCURL_INCLUDE_DIR=$LIBCURL_ROOT_DIR/include \
     -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../$CMAKE_TOOLCHAIN_FILE \
-    -DIOS_PLATFORM=$IOS_PLATFORM \
+    -DPLATFORM=$PLATFORM \
+    -DBUILD_STATIC=$BUILD_STATIC \
     -Bios -H../src
