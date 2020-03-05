@@ -30,7 +30,7 @@ OUT="zap_combined"
 if [ "$sim" == "sim" ]; then
   ARCHS="x86_64"
 else
-  ARCHS="armv7 armv7s arm64"
+  ARCHS="armv7 armv7s arm64 x86_64"
 fi
 
 mkdir -p $INTPATH
