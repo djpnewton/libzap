@@ -26,7 +26,8 @@ void waves_secure_hash(const uint8_t *message, size_t message_len, uint8_t hash[
 bool waves_message_sign(const curve25519_secret_key *private_key, const unsigned char *message, const size_t message_size,
                         curve25519_signature signature) {
     unsigned char random[64];
-    RAND_bytes(random, 64);
+    if (RAND_bytes(random, 64) != 1)
+        return false;
     return waves_message_sign_custom_random(private_key, message, message_size, signature, random);
 }
 
