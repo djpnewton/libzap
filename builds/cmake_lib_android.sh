@@ -46,8 +46,8 @@ fi
 
 if [ ! -d $JANSSON_ROOT_DIR ]; then
     mkdir -p $DEPS
-    wget -nc https://github.com/akheron/jansson/archive/v2.11.zip -O $DEPS/jansson_v2.11.zip
-    unzip $DEPS/jansson_v2.11.zip -d $DEPS
+    wget -nc https://github.com/akheron/jansson/archive/v2.12.zip -O $DEPS/jansson_v2.12.zip
+    unzip $DEPS/jansson_v2.12.zip -d $DEPS
 fi
 
 mkdir -p android

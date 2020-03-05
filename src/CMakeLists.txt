@@ -22,7 +22,7 @@ function(create_resources dir output)
 endfunction()
 
 add_subdirectory(../deps/waves-c build/waves-c)
-add_subdirectory(../deps/jansson-2.11 build/jansson)
+add_subdirectory(../deps/jansson-2.12 build/jansson)
 
 project(zap)
 

@@ -26,6 +26,6 @@ else
     apt install google-android-ndk-installer
 fi
 
-wget -nc https://github.com/akheron/jansson/archive/v2.11.zip -O deps/jansson_v2.11.zip
-unzip deps/jansson_v2.11.zip -d deps/
+wget -nc https://github.com/akheron/jansson/archive/v2.12.zip -O deps/jansson_v2.12.zip
+unzip deps/jansson_v2.12.zip -d deps/
 

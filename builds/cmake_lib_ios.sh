@@ -15,7 +15,7 @@ fi
 DEPS=../deps
 OPENSSL_ROOT_DIR=$DEPS/ios/openssl
 LIBCURL_ROOT_DIR=$DEPS/curl-android-ios-2aead71c1921d87cf7330d2acd581b1307adb1e1/prebuilt-with-ssl/iOS
-JANSSON_ROOT_DIR=$DEPS/jansson-2.11
+JANSSON_ROOT_DIR=$DEPS/jansson-2.12
 
 if [ ! -d $OPENSSL_ROOT_DIR ]; then
     mkdir -p $DEPS/ios
@@ -33,8 +33,8 @@ fi
 
 if [ ! -d $JANSSON_ROOT_DIR ]; then
     mkdir -p $DEPS
-    wget -nc https://github.com/akheron/jansson/archive/v2.11.zip -O $DEPS/jansson_v2.11.zip
-    unzip $DEPS/jansson_v2.11.zip -d $DEPS
+    wget -nc https://github.com/akheron/jansson/archive/v2.12.zip -O $DEPS/jansson_v2.12.zip
+    unzip $DEPS/jansson_v2.12.zip -d $DEPS
 fi
 
 mkdir -p ios
