@@ -46,6 +46,8 @@ elif [ "$build_type" == "ios" ]; then
     if [ "$static" == "static" ]; then
         echo :: combine libs
         (cd builds; ./combine_ios_libs.sh $sim;)
+    else
+        cp builds/ios/build/waves-c/bin/* builds/xcode_build/
     fi
 else
     echo no build type specified! - 'android' or 'ios'?
