@@ -36,7 +36,7 @@ if [ "$build_type" == "android" ]; then
     (cd builds; ./build_android_abis.sh)
 elif [ "$build_type" == "ios" ]; then
     # do ios stuff
-    echo :: build libzap.a/dynlib *all ABIs*
+    echo :: build libzap.a/zap.framework *all ABIs*
     find . -name ".DS_Store" -delete
     if [ -n "$(ls -A builds/xcode_build 2>/dev/null)" ]; then
         rm -r builds/xcode_build/*
@@ -47,7 +47,7 @@ elif [ "$build_type" == "ios" ]; then
         echo :: combine libs
         (cd builds; ./combine_ios_libs.sh $sim;)
     else
-        cp builds/ios/build/waves-c/bin/* builds/xcode_build/
+        cp -r builds/ios/build/waves-c/bin/* builds/xcode_build/
     fi
 else
     echo no build type specified! - 'android' or 'ios'?
