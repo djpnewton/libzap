@@ -99,7 +99,7 @@ char g_network_host[1024] = {};
         do { if (DEBUG) __android_log_print(ANDROID_LOG_ERROR, "LIBZAP", fmt, ##__VA_ARGS__); } while (0)
 #else
     #define debug_print(fmt, ...) \
-        do { if (DEBUG) fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
+        do { if (DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
 #endif
 
 //
