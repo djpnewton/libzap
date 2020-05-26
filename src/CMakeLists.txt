@@ -62,9 +62,12 @@ else()
     set(CURL_LIBRARY "-lcurl") 
     find_package(CURL REQUIRED) 
 endif()
+if (WIN32)
+    set(WINSOCK_LIBRARIES ws2_32)
+endif()
 
 add_library(${PROJECT_NAME} ${LIBRARY_TYPE} ${SOURCE} ${BIP39_SOURCE})
-target_link_libraries(${PROJECT_NAME} waves_c jansson ${ZLIB_LIBRARIES} curl ${CURL_LIBRARIES} ${LOG_LIBRARIES} ${SECURITY_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} waves_c jansson ${ZLIB_LIBRARIES} ${CURL_LIBRARIES} ${LOG_LIBRARIES} ${SECURITY_LIBRARIES} ${WINSOCK_LIBRARIES})
 if (IOS AND NOT BUILD_STATIC)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         FRAMEWORK TRUE

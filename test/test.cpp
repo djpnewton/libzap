@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <iostream>
+#include <unordered_map>
 
 #include "../src/zap.h"
 #include "args.hxx"
@@ -86,6 +87,10 @@ int main(int argc, char *argv[])
     args::ValueFlag<std::string> attachment_opt_spend(spend, "attachment", "attachment for tx", {'A'});
     args::Command uriparse(commands, "uriparse", "parse a waves uri ('waves://<address>?asset=<assetid>&amount=<amount>&attachment=<attachment>')");
     args::ValueFlag<std::string> uri_opt(uriparse, "uri", "uri to input", {'u'});
+    args::Command find_mnemonic_collision(commands, "find_mnemonic_collision", "create seeds and try to find a collision");
+    args::ValueFlag<bool> test_mnemonic_collision(find_mnemonic_collision, "test_collision", "create a false collision after 1000 rounds", {'t'});
+    args::Command find_addr_collision(commands, "find_addr_collision", "create addrs from seeds and try to find a collision");
+    args::ValueFlag<bool> test_addr_collision(find_addr_collision, "test_collision", "create a false collision after 1000 rounds", {'t'});
 
     args::Group arguments(p, "arguments", args::Group::Validators::DontCare, args::Options::Global);
     args::ValueFlag<char> network(arguments, "network", "Mainnet ('W') or testnet ('T' - default)", {'n'});
@@ -278,6 +283,86 @@ int main(int argc, char *argv[])
             bool result = lzap_uri_parse(uri, &req);
             print_lzap_error();
             printf("uri parse: %d\n  address: %s\n  asset_id: %s\n  attachment: %s\n  amount: %llu\n", result, req.address, req.asset_id, req.attachment, req.amount);
+        }
+        else if (find_mnemonic_collision)
+        {
+            // find mnemonic collision
+            auto test = args::get(test_mnemonic_collision);
+            std::unordered_map<std::string, int> umap;
+            char mnemonic[1024];
+            long count = 0;
+
+            while (1)
+            {
+                // init data
+                bool result = lzap_mnemonic_create(mnemonic, 1024);
+                if (!result)
+                {
+                    printf("lzap_mnemonic_create failed!!\n");
+                    break;
+                }
+                std::string mnemonic_cpp(mnemonic);
+
+                // test collision
+                if (test && count == 1000)
+                    umap[mnemonic_cpp] = 1;
+
+                // search for collision and add current value if not present
+                auto search = umap.find(mnemonic_cpp);
+                if (search == umap.end())
+                {
+                    umap[mnemonic_cpp] = 1;
+                    count++;
+                }
+                else
+                {
+                    printf("::ERROR - mnemonic '%s' already exists in umap!!\n", mnemonic);
+                    printf("  %d mnemonics created\n", count);
+                    break;
+                }
+
+                if (count % 1000 == 0)
+                    printf("%d - %s\n", count, mnemonic);
+
+            }
+        }
+        else if (find_addr_collision)
+        {
+            // find addr collision
+            auto test = args::get(test_addr_collision);
+            std::unordered_map<std::string, std::string> umap;
+            char addr[512];
+            long count = 0;
+
+            while (1)
+            {
+                // init data
+                std::string seed = std::to_string(count);
+                lzap_seed_address(seed.c_str(), addr);
+                print_lzap_error();
+                std::string addr_cpp(addr);
+                // test collision
+                if (test && count == 1000)
+                    umap[addr_cpp] = seed;
+                // search for collision and add current value if not present
+                auto search = umap.find(addr_cpp);
+                if (search == umap.end())
+                {
+                    umap[addr_cpp] = seed;
+                    count++;
+                }
+                else
+                {
+                    printf("::ERROR - addr '%s' already exists in umap!!\n", addr);
+                    printf("  seed 1: '%s', seed 2: '%s'!!\n", seed.c_str(), umap[addr_cpp].c_str());
+                    printf("  %d addrs created\n", count);
+                    break;
+                }
+
+                if (count % 1000 == 0)
+                    printf("%d - %s\n", count, addr);
+
+            }
         }
 
         std::cout << std::endl;

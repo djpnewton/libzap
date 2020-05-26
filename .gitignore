@@ -16,6 +16,7 @@ builds/mac
 builds/linux
 builds/win
 builds/android
+builds/android_testapp
 builds/ndk_build
 builds/ios
 builds/xcode_build
