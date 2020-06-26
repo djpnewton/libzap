@@ -1278,6 +1278,30 @@ bool lzap_b58_enc(void *src, size_t src_sz, char *dst, size_t dst_sz)
     return b58enc(dst, &dst_sz, src, src_sz);
 }
 
+
+struct signature_t lzap_message_sign(const char *seed, const char *message, size_t message_sz)
+{
+    clear_error();
+    struct signature_t result = {false};
+
+
+    // get private and public key
+    curve25519_secret_key privkey;
+    curve25519_public_key pubkey;
+    waves_seed_to_privkey((const unsigned char*)seed, privkey, (unsigned char*)pubkey); 
+
+    // sign message
+    if (!waves_message_sign(&privkey, (const unsigned char*)message, message_sz, (unsigned char*)result.signature))
+    {
+        debug_print("lzap_transaction_create: failed to create signature\n");
+        set_error(LZAP_ERR_UNSPECIFIED);
+        return result;
+    }
+
+    result.success = true;
+    return result;
+}
+
 //
 // temporary wrappers while we wait for dart ffi to do its thing re passing structs on the stack
 //
@@ -1319,4 +1343,10 @@ bool lzap_transaction_broadcast_ns(struct spend_tx_t *spend_tx, struct tx_t *bro
 {
     struct spend_tx_t spend_tx_stack = *spend_tx;
     return lzap_transaction_broadcast(spend_tx_stack, broadcast_tx_out);
+}
+
+void lzap_message_sign_ns(const char *seed, const char *message, size_t message_sz, struct signature_t *signature_out)
+{
+    struct signature_t signature = lzap_message_sign(seed, message, message_sz);
+    *signature_out = signature;
 }

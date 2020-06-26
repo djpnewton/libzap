@@ -43,6 +43,12 @@ struct waves_payment_request_t
     char attachment[MAX_TXFIELD];
     uint64_t amount;
 };
+
+struct signature_t
+{
+    uint32_t success;
+    char signature[SIG_SIZE];
+};
 #pragma pack(pop)
 
 #define LZAP_ERR_NONE 0
@@ -56,7 +62,7 @@ struct waves_payment_request_t
 #define LZAP_ERR_INVALID_ASSET_ID 8
 #define LZAP_ERR_UNSPECIFIED -1
 
-#define LZAP_VERSION 12
+#define LZAP_VERSION 13
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,6 +88,8 @@ extern "C" {
 
     bool lzap_b58_enc(void *src, size_t src_sz, char *dst, size_t dst_sz);
 
+    struct signature_t lzap_message_sign(const char *seed, const char *message, size_t message_sz);
+
     // temporary wrappers while we wait for dart to be able to handle passing structs on the stack :))
     bool lzap_address_check_ns(const char *address);
     bool lzap_address_balance_ns(const char *address, int64_t *balance_out);
@@ -89,6 +97,7 @@ extern "C" {
     bool lzap_transaction_fee_ns(int64_t *fee_out);
     void lzap_transaction_create_ns(const char *seed, const char *recipient, uint64_t amount, uint64_t fee, const char *attachment, struct spend_tx_t *spend_tx_out);
     bool lzap_transaction_broadcast_ns(struct spend_tx_t *spend_tx, struct tx_t *broadcast_tx_out);
+    void lzap_message_sign_ns(const char *seed, const char *message, size_t message_sz, struct signature_t *signature_out);
 #ifdef __cplusplus
 }
 #endif
