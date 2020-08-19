@@ -35,6 +35,8 @@ if (BUILD_STATIC)
     set(LIBRARY_TYPE STATIC)
 endif()
 
+include_directories(../deps/jansson-2.12/src)
+include_directories(../deps/jansson-2.12/android)
 if (ANDROID)
     create_resources(resources resources.c)
     set(SOURCE ${SOURCE} zap_jni.c)
@@ -50,8 +52,6 @@ if (IOS)
 endif()
 if (ANDROID OR IOS)
     include_directories(${CURL_INCLUDE_DIR})
-    include_directories(../deps/jansson-2.12/src)
-    include_directories(../deps/jansson-2.12/android)
     # use prebuilt curl
     add_library(curl STATIC IMPORTED SHARED)
     set_target_properties(curl PROPERTIES IMPORTED_LOCATION 

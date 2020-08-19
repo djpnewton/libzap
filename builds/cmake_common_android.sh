@@ -39,7 +39,7 @@ ANDROID_API=18
 DEPS=`realpath ../deps`
 OPENSSL_ROOT_DIR=$DEPS/android/openssl/$ANDROID_ABI
 LIBCURL_ROOT_DIR=$DEPS/curl-android-ios-2aead71c1921d87cf7330d2acd581b1307adb1e1/prebuilt-with-ssl/android
-JANSSON_ROOT_DIR=$DEPS/jansson-2.11
+JANSSON_ROOT_DIR=$DEPS/jansson-2.12
 
 if [ ! -d $OPENSSL_ROOT_DIR ]; then
     mkdir -p $DEPS/android
