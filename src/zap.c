@@ -87,6 +87,7 @@ int g_error_code = LZAP_ERR_NONE;
 char *g_error_msg = "";
 char g_network = TESTNET_NETWORK_BYTE;
 char g_network_host[1024] = {};
+char g_asset_id[128] = {};
 
 //
 // -- Logging definitions --
@@ -147,6 +148,8 @@ const char* network_host()
 
 const char* network_assetid()
 {
+    if (g_asset_id[0] != 0)
+        return g_asset_id;
     if (g_network == MAINNET_NETWORK_BYTE)
         return MAINNET_ASSETID;
     return TESTNET_ASSETID;
@@ -464,6 +467,24 @@ bool lzap_network_set(char network_byte)
         return false;
     }
     return true;
+}
+
+const char* lzap_asset_id_get()
+{
+    clear_error();
+    return network_assetid();
+}
+
+bool lzap_asset_id_set(const char *asset_id)
+{
+    clear_error();
+    if (!asset_id)
+        memset(g_asset_id, 0, sizeof(g_asset_id));
+    else
+    {
+        strncpy(g_asset_id, asset_id, sizeof(g_asset_id));
+        g_asset_id[sizeof(g_asset_id)-1] = 0;
+    }
 }
 
 bool lzap_mnemonic_create(char *output, size_t size)

@@ -62,7 +62,7 @@ struct signature_t
 #define LZAP_ERR_INVALID_ASSET_ID 8
 #define LZAP_ERR_UNSPECIFIED -1
 
-#define LZAP_VERSION 13
+#define LZAP_VERSION 14
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,6 +73,8 @@ extern "C" {
     void lzap_node_set(const char *url);
     char lzap_network_get();
     bool lzap_network_set(char network_byte);
+    const char* lzap_asset_id_get();
+    bool lzap_asset_id_set(const char *asset_id);
     bool lzap_mnemonic_create(char *output, size_t size);
     bool lzap_mnemonic_check(const char *mnemonic);
     const char* const* lzap_mnemonic_wordlist();

@@ -22,6 +22,8 @@ public class zap_jni {
     public static native void node_set(String url);
     public static native char network_get();
     public static native int network_set(char network_byte);
+    public static native String asset_id_get();
+    public static native void asset_id_set(String asset_id);
     public static native String mnemonic_create();
     public static native int mnemonic_check(String mnemonic);
     public static native String[] mnemonic_wordlist();

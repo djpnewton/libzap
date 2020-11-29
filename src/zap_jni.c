@@ -179,6 +179,21 @@ JNIEXPORT jboolean JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_network_1set(
     return lzap_network_set(network_byte);
 }
 
+JNIEXPORT jstring JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_asset_1id_1get(
+    JNIEnv* env, jobject thiz)
+{
+    const char *c_asset_id = lzap_asset_id_get();
+    return (*env)->NewStringUTF(env, c_asset_id);
+}
+
+
+JNIEXPORT void JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_asset_1id_1set(
+    JNIEnv* env, jobject thiz, jstring asset_id)
+{
+    const char *c_asset_id = (*env)->GetStringUTFChars(env, asset_id, 0);
+    lzap_asset_id_set(c_asset_id);
+}
+
 JNIEXPORT jobject JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_mnemonic_1create(
     JNIEnv* env, jobject thiz)
 {
