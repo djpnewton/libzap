@@ -475,7 +475,7 @@ const char* lzap_asset_id_get()
     return network_assetid();
 }
 
-bool lzap_asset_id_set(const char *asset_id)
+void lzap_asset_id_set(const char *asset_id)
 {
     clear_error();
     if (!asset_id)

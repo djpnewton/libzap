@@ -74,7 +74,7 @@ extern "C" {
     char lzap_network_get();
     bool lzap_network_set(char network_byte);
     const char* lzap_asset_id_get();
-    bool lzap_asset_id_set(const char *asset_id);
+    void lzap_asset_id_set(const char *asset_id);
     bool lzap_mnemonic_create(char *output, size_t size);
     bool lzap_mnemonic_check(const char *mnemonic);
     const char* const* lzap_mnemonic_wordlist();
