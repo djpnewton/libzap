@@ -62,7 +62,7 @@ struct signature_t
 #define LZAP_ERR_INVALID_ASSET_ID 8
 #define LZAP_ERR_UNSPECIFIED -1
 
-#define LZAP_VERSION 14
+#define LZAP_VERSION 15
 
 #ifdef __cplusplus
 extern "C" {
