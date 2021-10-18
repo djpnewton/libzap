@@ -433,6 +433,36 @@ int lzap_version()
     return LZAP_VERSION;
 }
 
+int lzap_curl_test()
+{
+    clear_error();
+    int res = 0;
+
+    struct curl_data_t data;
+    char* url = "http://example.com";
+    debug_print("lzap_curl_test: requesting %s\n", url);
+    if (!get_url(url, &data))
+    {
+        debug_print("lzap_curl_test: request failed %s\n", url);
+        res = 1;
+    }
+    url = "https://example.com";
+    debug_print("lzap_curl_test: requesting %s\n", url);
+    if (!get_url(url, &data))
+    {
+        debug_print("lzap_curl_test: request failed %s\n", url);
+        res = res + 2;
+    }
+    url = "https://letsencrypt.org";
+    debug_print("lzap_curl_test: requesting %s\n", url);
+    if (!get_url(url, &data))
+    {
+        debug_print("lzap_curl_test: request failed %s\n", url);
+        res = res + 4;
+    }
+    return res;
+}
+
 const char* lzap_node_get()
 {
     clear_error();

@@ -62,13 +62,14 @@ struct signature_t
 #define LZAP_ERR_INVALID_ASSET_ID 8
 #define LZAP_ERR_UNSPECIFIED -1
 
-#define LZAP_VERSION 15
+#define LZAP_VERSION 16
 
 #ifdef __cplusplus
 extern "C" {
 #endif
     void lzap_error(int *code, const char** msg);
     int lzap_version();
+    int lzap_curl_test();
     const char* lzap_node_get();
     void lzap_node_set(const char *url);
     char lzap_network_get();

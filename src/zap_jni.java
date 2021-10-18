@@ -18,6 +18,7 @@ public class zap_jni {
      */
     public static native int error(String[] msg_out);
     public static native int version();
+    public static native int curl_test();
     public static native String node_get();
     public static native void node_set(String url);
     public static native char network_get();

@@ -151,6 +151,11 @@ JNIEXPORT jint JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_version(JNIEnv* env,
     return lzap_version();
 }
 
+JNIEXPORT jint JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_curl_1test(JNIEnv* env, jobject thiz)
+{
+    return lzap_curl_test();
+}
+
 JNIEXPORT jstring JNICALL Java_com_djpsoft_zap_plugin_zap_1jni_node_1get(
     JNIEnv* env, jobject thiz)
 {
